@@ -11,12 +11,11 @@
 			<parent link="${parent}"/>
 			<child  link="${name}_hipassembly"/>
 			<axis xyz="0 0 1"/>
-			<limit effort="150.0" velocity="12.0" lower="${-7*PI/18}" upper="${PI/6}"/>
-		</joint>
+			<limit effort="${haa_limit}" velocity="12.0" lower="${haa_min*PI/180}" upper="${haa_max*PI/180}" />		</joint>
 		
 		<!-- Upper leg joint -->
 		<joint name="${name}_hfe_joint" type="revolute">
-			<origin xyz="${d_tbb} 0 0" rpy="${reflect_upper*PI/2} 0 0"/>
+			<origin xyz="${hipassembly_length} 0 0" rpy="${reflect_upper*PI/2} 0 0"/>
 			<parent link="${name}_hipassembly"/>
 			<child  link="${name}_upperleg"/>
 			<axis xyz="0 0 1"/>
@@ -27,7 +26,7 @@
 		
 		<!-- Lower leg joint -->
 		<joint name="${name}_kfe_joint" type="revolute">
-			<origin xyz="${d_p1p2} 0 0" rpy="0 0 0"/>
+			<origin xyz="${upperleg_length} 0 0" rpy="0 0 0"/>>
 			<parent link="${name}_upperleg"/>
 			<child  link="${name}_lowerleg"/>
 			<axis xyz="0 0 1"/>
@@ -38,7 +37,7 @@
 
 		<!-- Foot joint -->
 		<joint name="${name}_foot_joint" type="fixed">
-			<origin xyz="0.35 0 0" rpy="${PI/2} 0 ${-PI/2}"/>
+			<origin xyz="${lowerleg_length} 0 0" rpy="${PI/2} 0 ${-PI/2}"/>
 			<parent link="${name}_lowerleg"/>
 			<child  link="${name}_foot"/>
 		</joint>
@@ -46,74 +45,85 @@
 		<!-- Links -->
 		<!-- Hip assembly link -->
 		<link name="${name}_hipassembly">
+			<inertial>
+				<origin xyz="${xcom_hipassembly}
+							 ${reflect_hip*ycom_hipassembly}
+							 ${reflect_hip*zcom_hipassembly}"/>
+				<mass value="${m_hipassembly}"/>
+				<inertia ixx="${ixx_hipassembly}" iyy="${iyy_hipassembly}" izz="${izz_hipassembly}"
+						 ixy="${reflect_hip*ixy_hipassembly}" ixz="${reflect_hip*ixz_hipassembly}" iyz="${iyz_hipassembly}"/>
+			</inertial>
 			<visual>
 				<origin xyz="0 0 0" rpy="${(1-reflect_hip)*PI/2} 0 0"/>
 				<geometry>
-					<mesh filename="package://xpp_hyq/meshes/leg/hipassembly.dae" scale="1 1 1"/>
+					<mesh filename="package://legged_robots_description/meshes/leg/hipassembly.dae" scale="1 1 1"/>
 				</geometry>
 			</visual>
-			<inertial>
-            	<origin xyz="0 0 0" rpy="0 0 0"/>
-            	<mass value="0.5" />
-            	<inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
-        	</inertial>
-        	<collision>
-            	<origin xyz="0 0 0" rpy="0 0 0"/>
-            	<geometry>
-                	<mesh filename="package://xpp_hyq/meshes/leg/hipassembly.dae" scale="1 1 1"/>
-            	</geometry>
-        	</collision>
+			<collision>
+				<origin xyz="0 0 0" rpy="${(1-reflect_hip)*PI/2} 0 0"/>
+				<geometry>
+					<mesh filename="package://legged_robots_description/meshes/leg/hipassembly.dae" scale="1 1 1"/>
+				</geometry>
+			</collision>
 		</link>
 		
 		<!-- Upper leg link -->
 		<link name="${name}_upperleg">
+			<inertial>
+				<origin xyz="${xcom_upperleg} ${-reflect_front*ycom_upperleg} ${zcom_upperleg}"/>
+				<mass value="${m_upperleg}"/>
+				<inertia ixx="${ixx_upperleg}" iyy="${iyy_upperleg}" izz="${izz_upperleg}"
+						 ixy="${reflect_front*ixy_upperleg}" ixz="${reflect_front*ixz_upperleg}" iyz="${iyz_upperleg}"/>
+			</inertial>
 			<visual> 
 				<origin xyz="0 0 0" rpy="${(1-reflect_front)*PI/2} 0 0"/>
 				<geometry>
-					<mesh filename="package://xpp_hyq/meshes/leg/upperleg.dae" scale="1 1 1"/>
+					<mesh filename="package://legged_robots_description/meshes/leg/upperleg.dae" scale="1 1 1"/>
 				</geometry>
 			</visual>
-			<inertial>
-            	<origin xyz="0 0 0" rpy="0 0 0"/>
-            	<mass value="0.5" />
-            	<inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
-        	</inertial>
-        	<collision>
-            	<origin xyz="0 0 0" rpy="0 0 0"/>
-            	<geometry>
-                	<mesh filename="package://xpp_hyq/meshes/leg/upperleg.dae" scale="1 1 1"/>
-            	</geometry>
-        	</collision>
+			<collision>
+				<origin xyz="0 0 0" rpy="${(1-reflect_front)*PI/2} 0 0"/>
+				<geometry>
+					<mesh filename="package://legged_robots_description/meshes/leg/upperleg.dae" scale="1 1 1"/>
+				</geometry>
+			</collision>
 		</link>
 		
 		<!-- Lower leg link -->
 		<link name="${name}_lowerleg">
+			<inertial>
+				<origin xyz="${xcom_lowerleg} ${reflect_front*ycom_lowerleg} ${reflect_front*zcom_lowerleg}"/>
+				<mass value="${m_lowerleg}"/>
+				<inertia ixx="${ixx_lowerleg}" iyy="${iyy_lowerleg}" izz="${izz_lowerleg}"
+						 ixy="${reflect_front*ixy_lowerleg}" ixz="${reflect_front*ixz_lowerleg}" iyz="${iyz_lowerleg}"/>
+			</inertial>
 			<visual>
 				<geometry>
-					<mesh filename="package://xpp_hyq/meshes/leg/lowerleg.dae" scale="1 1 1"/>
+					<mesh filename="package://legged_robots_description/meshes/leg/lowerleg.dae" scale="1 1 1"/>
 				</geometry>
 				<material name="white"/>
 			</visual>
-			<inertial>
-            	<origin xyz="0 0 0" rpy="0 0 0"/>
-            	<mass value="0.5" />
-            	<inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
-        	</inertial>
-        	<collision>
-            	<origin xyz="0 0 0" rpy="0 0 0"/>
-            	<geometry>
-                	<mesh filename="package://xpp_hyq/meshes/leg/upperleg.dae" scale="1 1 1"/>
-            	</geometry>
-        	</collision>
+			<collision>
+			    <origin xyz="${lowerleg_length/2.0} 0 0" rpy="0 ${-PI/2}  0"/>
+				<geometry>				    
+					<cylinder length="${lowerleg_length}"  radius="0.02"/>
+				</geometry>
+			</collision>
 		</link>
 		
 		<!-- Foot link -->
 		<link name="${name}_foot">
-			<visual>
-				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+			<collision>
+				<origin xyz="0 0 0" rpy="0 0 0"/>
 				<geometry>
-					<sphere radius="0.021"/>
+					<sphere radius="0.02175"/>
 				</geometry>
+			</collision>
+			<visual>
+				<geometry>
+					<sphere radius="0.02175" />
+				</geometry>
+				<material name="black" />
 			</visual>
 		</link>
 		

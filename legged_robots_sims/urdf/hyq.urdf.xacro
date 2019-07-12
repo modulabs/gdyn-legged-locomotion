@@ -2,12 +2,9 @@
 
 <robot name="hyq" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <xacro:property name="PI" value="3.1415926535897931"/>
-  <xacro:property name="d_lr" value="0.414"/>
-  <xacro:property name="d_fh" value="0.747"/>
-  <xacro:property name="d_tbb" value="0.082"/>
-  <xacro:property name="d_p1p2" value="0.35"/>
-  
+<!-- The following included files set up definitions of parts of the robot body -->
+  <xacro:include filename="$(find legged_robots_sims)/urdf/common.xacro"/>
+
 	<!-- HyQ trunk -->
 	<xacro:include filename="$(find legged_robots_sims)/urdf/trunk.urdf.xacro"/>
 
