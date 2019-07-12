@@ -52,6 +52,17 @@
 					<mesh filename="package://xpp_hyq/meshes/leg/hipassembly.dae" scale="1 1 1"/>
 				</geometry>
 			</visual>
+			<inertial>
+            	<origin xyz="0 0 0" rpy="0 0 0"/>
+            	<mass value="0.5" />
+            	<inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+        	</inertial>
+        	<collision>
+            	<origin xyz="0 0 0" rpy="0 0 0"/>
+            	<geometry>
+                	<mesh filename="package://xpp_hyq/meshes/leg/hipassembly.dae" scale="1 1 1"/>
+            	</geometry>
+        	</collision>
 		</link>
 		
 		<!-- Upper leg link -->
@@ -62,6 +73,17 @@
 					<mesh filename="package://xpp_hyq/meshes/leg/upperleg.dae" scale="1 1 1"/>
 				</geometry>
 			</visual>
+			<inertial>
+            	<origin xyz="0 0 0" rpy="0 0 0"/>
+            	<mass value="0.5" />
+            	<inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+        	</inertial>
+        	<collision>
+            	<origin xyz="0 0 0" rpy="0 0 0"/>
+            	<geometry>
+                	<mesh filename="package://xpp_hyq/meshes/leg/upperleg.dae" scale="1 1 1"/>
+            	</geometry>
+        	</collision>
 		</link>
 		
 		<!-- Lower leg link -->
@@ -72,16 +94,27 @@
 				</geometry>
 				<material name="white"/>
 			</visual>
+			<inertial>
+            	<origin xyz="0 0 0" rpy="0 0 0"/>
+            	<mass value="0.5" />
+            	<inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+        	</inertial>
+        	<collision>
+            	<origin xyz="0 0 0" rpy="0 0 0"/>
+            	<geometry>
+                	<mesh filename="package://xpp_hyq/meshes/leg/upperleg.dae" scale="1 1 1"/>
+            	</geometry>
+        	</collision>
 		</link>
 		
 		<!-- Foot link -->
 		<link name="${name}_foot">
-			<!--<visual>
+			<visual>
 				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
 				<geometry>
 					<sphere radius="0.021"/>
 				</geometry>
-			</visual>-->
+			</visual>
 		</link>
 		
 	</xacro:macro>

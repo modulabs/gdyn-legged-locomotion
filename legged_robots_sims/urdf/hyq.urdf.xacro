@@ -7,12 +7,12 @@
   <xacro:property name="d_fh" value="0.747"/>
   <xacro:property name="d_tbb" value="0.082"/>
   <xacro:property name="d_p1p2" value="0.35"/>
-
+  
 	<!-- HyQ trunk -->
-	<xacro:include filename="$(find xpp_hyq)/urdf/trunk.urdf.xacro"/>
+	<xacro:include filename="$(find legged_robots_sims)/urdf/trunk.urdf.xacro"/>
 
 	<!-- HyQ legs -->
-	<xacro:include filename="$(find xpp_hyq)/urdf/leg.urdf.xacro"/>
+	<xacro:include filename="$(find legged_robots_sims)/urdf/leg.urdf.xacro"/>
 
 
 	<!-- Using the macros defined above -->
