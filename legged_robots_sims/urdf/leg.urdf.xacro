@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
 
 	<!-- leg macro definiction -->
 	<xacro:macro name="hyq_leg" params="name parent *origin reflect_hip reflect_upper reflect_front">
