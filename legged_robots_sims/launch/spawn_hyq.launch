@@ -1,17 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
-    <!-- <include file="$(find spawn_robot_tools_pkg)/launch/spawn_robot_xacro_multiple.launch">
-        <arg name="x" default="0.0" />
-        <arg name="y" default="0.0" />
-        <arg name="z" default="0.0" />
-        <arg name="roll" default="0"/>
-        <arg name="pitch" default="0"/>
-        <arg name="yaw" default="0.0" />
-        <arg name="urdf_robot_file" default="$(find legged_robots_sims)/urdf/hyq.urdf.xacro" />
-        <arg name="robot_name" default="hyq" />
-    </include> -->
+    <param name="robot_description" 
+        command="$(find xacro)/xacro --inorder '$(find legged_robots_sims)/urdf/hyq/hyq.urdf.xacro'" />
 
-    <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find legged_robots_sims)/urdf/hyq.urdf.xacro'" />
-    <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-urdf -model hyq -param robot_description"/>
+    <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" 
+        args="-urdf -model hyq -param robot_description"/>
 
 </launch>
