@@ -1,0 +1,8 @@
+<launch>
+  <rosparam file="$(find legged_robots_control)/config/hyq_control.yaml" command="load"/>
+  
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+    output="screen" ns="/hyq" args="joint_state_controller leg_controller"/>
+
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" ns="/hyq"/>
+</launch>

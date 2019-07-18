@@ -1,8 +1,10 @@
 <?xml version="1.0"?>
 
-<robot name="hyq" xmlns:xacro="http://ros.org/wiki/xacro">
+<robot name="hyq" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-<!-- The following included files set up definitions of parts of the robot body -->
+  <xacro:include filename="$(find legged_robots_sims)/urdf/hyq/hyq.gazebo.xacro" />
+
+  <!-- The following included files set up definitions of parts of the robot body -->
   <xacro:include filename="$(find legged_robots_sims)/urdf/hyq/common.xacro"/>
 
 	<!-- HyQ trunk -->

@@ -1,0 +1,13 @@
+<launch>
+  <node name="hyq_rqt_state" pkg="rqt_gui" type="rqt_gui" respawn="false"
+	  output="screen" args="--perspective-file $(find legged_robots_control)/launch/gravity_comp_control_perspective/joint4_state.perspective"/>
+
+  <node name="hyq_rqt_error" pkg="rqt_gui" type="rqt_gui" respawn="false"
+	  output="screen" args="--perspective-file $(find legged_robots_control)/launch/gravity_comp_control_perspective/joint4_error.perspective"/>
+
+  <node name="hyq_rqt_effort" pkg="rqt_gui" type="rqt_gui" respawn="false"
+	  output="screen" args="--perspective-file $(find legged_robots_control)/launch/gravity_comp_control_perspective/joint4_effort.perspective"/>
+
+  <node name="hyq_rqt_tuning" pkg="rqt_gui" type="rqt_gui" respawn="false"
+	  output="screen" args="--perspective-file $(find legged_robots_control)/launch/gravity_comp_control_perspective/tuning.perspective"/>
+</launch>

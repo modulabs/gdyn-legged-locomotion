@@ -3,4 +3,6 @@
   <include file="$(find legged_robots_sims)/launch/world.launch"/>
 
   <include file="$(find legged_robots_sims)/launch/spawn_hyq.launch"/>
+
+  <include file="$(find legged_robots_control)/launch/hyq_control.launch"/>
 </launch>

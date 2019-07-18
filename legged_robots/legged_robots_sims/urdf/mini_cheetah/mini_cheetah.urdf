@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<robot name="mini_cheetah" xmlns:xacro="http://ros.org/wiki/xacro">
+<robot name="mini_cheetah" xmlns:xacro="http://www.ros.org/wiki/xacro">
     <link name="body">
         <inertial>
             <mass value="3.3"/>
