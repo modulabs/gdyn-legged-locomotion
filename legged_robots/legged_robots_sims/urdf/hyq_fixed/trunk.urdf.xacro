@@ -3,12 +3,15 @@
 
 	<!-- trunk macro definition -->
 	<xacro:macro name="hyq_trunk" params="name">
-	
-		<!-- Floating-base Joint -->
-		<joint name="floating_base" type="fixed">
-			<origin xyz="0 0 0.0" rpy="0 0 0"/>
-			<parent link="${name}"/>
-			<child link="trunk"/>
+
+		<!-- World -->
+		<link name="world"/>
+
+		<!-- World Fixed Joint-->
+  		<joint name="world_base_joint" type="fixed">
+    		<origin xyz="0 0 ${z_offset_from_world}" rpy="0 0 0" />
+			<parent link="world" />
+			<child link="${name}" />
 		</joint>
 
 		<!-- Footprint link -->
@@ -19,7 +22,14 @@
 				</geometry>
 			</visual>
 		</link>
-		
+
+		<!-- Floating-base Joint -->
+		<joint name="floating_base" type="fixed">
+			<origin xyz="0 0 0.0" rpy="0 0 0"/>
+			<parent link="${name}"/>
+			<child link="trunk"/>
+		</joint>
+
 		<!-- Trunk link -->
 		<link name="trunk">
 			<inertial>

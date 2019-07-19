@@ -184,7 +184,7 @@ namespace legged_controllers{
 			static double t = 0;
 			for (size_t i=0; i<_n_joints; i++)
 			{
-				_q_d(i) = 0*D2R*sin(PI/2*t);
+				_q_d(i) = 45*D2R*sin(PI/2*t);
 				// _q_d(i) = 30*D2R*sin(PI/2*t);
 				//_q_d(i) = commands[i];
 
@@ -211,18 +211,18 @@ namespace legged_controllers{
 				// friction compensation, to do: implement friction observer
 				_tau_fric(i) = 1*_qdot(i) + 1*KDL::sign(_qdot(i));
 			}
-			_q_d(0) = 0;
-			_q_d(1) = -45;
-			_q_d(2) = 45;
-			_q_d(3) = 0;
-			_q_d(4) = -45;
-			_q_d(5) = 45;
-			_q_d(6) = 0;
-			_q_d(7) = -45;
-			_q_d(8) = 45;
-			_q_d(9) = 0;
-			_q_d(10) = -45;
-			_q_d(11) = 45;
+			_q_d(0) = 0*D2R;
+			_q_d(1) = 0*D2R;
+			_q_d(2) = 0*D2R;
+			_q_d(3) = 0*D2R;
+			_q_d(4) = 0*D2R;
+			_q_d(5) = 0*D2R;
+			_q_d(6) = 0*D2R;
+			_q_d(7) = 0*D2R;
+			_q_d(8) = 0*D2R;
+			_q_d(9) = 0*D2R;
+			_q_d(10) = 0*D2R;
+			_q_d(11) = 0*D2R;
 
 			
 			t += dt;
