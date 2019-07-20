@@ -2,16 +2,16 @@
 
 <robot name="hyq" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <xacro:include filename="$(find legged_robots_sims)/urdf/hyq_fixed/hyq.gazebo.xacro" />
+  <xacro:include filename="$(find legged_robots_description)/urdf/hyq/hyq.gazebo.xacro" />
 
   <!-- The following included files set up definitions of parts of the robot body -->
-  <xacro:include filename="$(find legged_robots_sims)/urdf/hyq_fixed/common.xacro"/>
+  <xacro:include filename="$(find legged_robots_description)/urdf/hyq/common.xacro"/>
 
 	<!-- HyQ trunk -->
-	<xacro:include filename="$(find legged_robots_sims)/urdf/hyq_fixed/trunk.urdf.xacro"/>
+	<xacro:include filename="$(find legged_robots_description)/urdf/hyq/trunk.urdf.xacro"/>
 
 	<!-- HyQ legs -->
-	<xacro:include filename="$(find legged_robots_sims)/urdf/hyq_fixed/leg.urdf.xacro"/>
+	<xacro:include filename="$(find legged_robots_description)/urdf/hyq/leg.urdf.xacro"/>
 
 
 	<!-- Using the macros defined above -->

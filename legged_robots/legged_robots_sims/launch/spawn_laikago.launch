@@ -7,7 +7,7 @@
         <arg name="roll" default="0"/>
         <arg name="pitch" default="0"/>
         <arg name="yaw" default="0.0" />
-        <arg name="urdf_robot_file" default="$(find legged_robots_sims)/urdf/laikago/laikago.urdf" />
+        <arg name="urdf_robot_file" default="$(find legged_robots_description)/urdf/laikago/laikago.urdf" />
         <arg name="robot_name" default="laikago" />
     </include>
 </launch>

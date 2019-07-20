@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
     <param name="robot_description" 
-        command="$(find xacro)/xacro --inorder '$(find legged_robots_sims)/urdf/hyq_fixed/hyq.urdf.xacro'" />
+        command="$(find xacro)/xacro --inorder '$(find legged_robots_description)/urdf/hyq_fixed/hyq.urdf.xacro'" />
 
     <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" 
         args="-urdf -model hyq -param robot_description"/>
