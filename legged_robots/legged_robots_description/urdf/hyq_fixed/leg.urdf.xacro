@@ -12,6 +12,7 @@
 			<child  link="${name}_hipassembly"/>
 			<axis xyz="0 0 1"/>
 			<limit effort="${haa_limit}" velocity="12.0" lower="${haa_min*PI/180}" upper="${haa_max*PI/180}" />		
+			<dynamics damping="0" friction="1000000000" />
 		</joint>
 		
 		<!-- Upper leg joint -->
@@ -23,6 +24,7 @@
 			<limit effort="150.0" velocity="12.0"
           lower="${-(1+reflect_front)*5*PI/36-(1-reflect_front)*7*PI/36}"
           upper="${(1-reflect_front)*5*PI/36+(1+reflect_front)*7*PI/36}"/>
+		  	<dynamics damping="0" friction="1000000000" />
 		</joint>
 		
 		<!-- Lower leg joint -->
@@ -34,6 +36,7 @@
 			<limit effort="150.0" velocity="12.0"
           lower="${-(1+reflect_front)*7*PI/18+(1-reflect_front)*PI/18}"
           upper="${(1-reflect_front)*7*PI/18-(1+reflect_front)*PI/18}"/>
+		  	<!-- <dynamics damping="100000" friction="100000" /> -->
 		</joint>
 
 		<!-- Foot joint -->
