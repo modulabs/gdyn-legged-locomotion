@@ -1,6 +1,9 @@
-#include "leg_controller.h"
+#include <legged_controllers/leg_controller.h>
 
 using namespace legged_controllers;
+
+namespace legged_controllers
+{
 
 bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::NodeHandle &n)
 {	
@@ -19,6 +22,10 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 	{
 		ROS_ERROR("List of joint names is empty.");
 		return false;
+	}
+	else
+	{
+		ROS_INFO("Find %d joints", _n_joints);
 	}
 
 	// urdf
@@ -96,7 +103,9 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 	}
 
 	// service updating gain
-	// _update_gain_srv = n.advertiseService("update_gain", &LegController::updateGain, this);
+	// auto srv_func_callback = boost::bind(&LegController::updateGain, _1, _2);
+	_update_gain_srv = n.advertiseService("update_gain", &LegController::updateGain, this);
+	// _update_gain_srv = n.advertiseService("update_gain", srv_func_callback, this);
 
 	return true;
 }
@@ -123,7 +132,12 @@ void LegController::setCommand(const std_msgs::Float64MultiArrayConstPtr& msg)
 	_commands_buffer.writeFromNonRT(msg->data);
 }
 
-void LegController::updateGain()
+bool LegController::updateGain(UpdateGain::Request& request, UpdateGain::Response& response)
+{
+	updateGain();
+}
+
+bool LegController::updateGain()
 {
 	std::vector<double> kp(_n_joints), kd(_n_joints);
 	std::string gain_name;
@@ -138,7 +152,7 @@ void LegController::updateGain()
 		else
 		{
 			ROS_ERROR("Cannot find %s gain", gain_name.c_str());
-			return;
+			return false;
 		}
 
 		gain_name = "/hyq/leg_controller/gains/" + _joint_names[i] + "/d";
@@ -149,9 +163,11 @@ void LegController::updateGain()
 		else
 		{
 			ROS_ERROR("Cannot find %s gain", gain_name.c_str());
-			return;
+			return false;
 		}
 	}
+
+	return true;
 }
 
 void LegController::update(const ros::Time& time, const ros::Duration& period)
@@ -164,7 +180,8 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	static double t = 0;
 	for (size_t i=0; i<_n_joints; i++)
 	{
-		_q_d(i) = 45*D2R*sin(PI/2*t);
+		// _q_d(i) = 0*D2R*sin(PI/2*t);
+		_q_d(i) = 10*D2R;
 		// _q_d(i) = 30*D2R*sin(PI/2*t);
 		//_q_d(i) = commands[i];
 
@@ -187,30 +204,18 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 
 		_q_d_old(i) = _q_d(i);
 		_qdot_d_old(i) = _qdot_d(i);
-
-		// friction compensation, to do: implement friction observer
-		_tau_fric(i) = 1*_qdot(i) + 1*KDL::sign(_qdot(i));
 	}
-	_q_d(0) = 0*D2R;
-	_q_d(1) = 0*D2R;
-	_q_d(2) = 0*D2R;
-	_q_d(3) = 0*D2R;
-	_q_d(4) = 0*D2R;
-	_q_d(5) = 0*D2R;
-	_q_d(6) = 0*D2R;
-	_q_d(7) = 0*D2R;
-	_q_d(8) = 0*D2R;
-	_q_d(9) = 0*D2R;
-	_q_d(10) = 0*D2R;
-	_q_d(11) = 0*D2R;
-
 	
 	t += dt;
 	
 	// torque command
 	for(int i=0; i<_n_joints; i++)
 	{
-		_tau_d(i) = _kp(i)*_q_error(i) + _kd(i)*_qdot_error(i);
+		if (i==2)
+			_tau_d(i) = _kp(i)*_q_error(i) + _kd(i)*_qdot_error(i);
+		else
+		 	_tau_d(i) = 0.0;
+
 
 		// effort saturation
 		if (_tau_d(i) >= _joint_urdfs[i]->limits->effort)
@@ -244,8 +249,6 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	}
 }
 
-
-
 void LegController::enforceJointLimits(double &command, unsigned int index)
 {
 	// Check that this joint has applicable limits
@@ -262,5 +265,6 @@ void LegController::enforceJointLimits(double &command, unsigned int index)
 	}
 }
 
+}
 PLUGINLIB_EXPORT_CLASS(legged_controllers::LegController, controller_interface::ControllerBase)
 

@@ -18,6 +18,11 @@ find_package(catkin REQUIRED COMPONENTS
 
 # message
 add_message_files(FILES ControllerJointState.msg)
+
+add_service_files(
+  FILES
+  UpdateGain.srv
+)
 generate_messages(DEPENDENCIES std_msgs)
 
 # include
@@ -31,7 +36,9 @@ catkin_package(
     urdf
     kdl_parser
     realtime_tools
+    message_generation
     # dynamic_reconfigure
+  INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
 )
 
@@ -41,7 +48,7 @@ add_library(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 
-add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_gencfg)
+# add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_gencfg)
 
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
