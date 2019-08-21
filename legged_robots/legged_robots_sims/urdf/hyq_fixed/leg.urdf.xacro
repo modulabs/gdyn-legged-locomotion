@@ -11,7 +11,8 @@
 			<parent link="${parent}"/>
 			<child  link="${name}_hipassembly"/>
 			<axis xyz="0 0 1"/>
-			<limit effort="${haa_limit}" velocity="12.0" lower="${haa_min*PI/180}" upper="${haa_max*PI/180}" />		
+			<limit effort="${haa_limit}" velocity="12.0" lower="${haa_min*PI/180}" upper="${haa_max*PI/180}" />
+			<dynamics damping="100" friction="1000" />		
 		</joint>
 		
 		<!-- Upper leg joint -->
@@ -21,8 +22,9 @@
 			<child  link="${name}_upperleg"/>
 			<axis xyz="0 0 1"/>
 			<limit effort="150.0" velocity="12.0"
-          lower="${-(1+reflect_front)*5*PI/36-(1-reflect_front)*7*PI/36}"
-          upper="${(1-reflect_front)*5*PI/36+(1+reflect_front)*7*PI/36}"/>
+          		   lower="${-(1+reflect_front)*5*PI/36-(1-reflect_front)*7*PI/36}"
+          		   upper="${(1-reflect_front)*5*PI/36+(1+reflect_front)*7*PI/36}"/>
+		    <dynamics damping="100" friction="1000" />	
 		</joint>
 		
 		<!-- Lower leg joint -->
@@ -32,8 +34,9 @@
 			<child  link="${name}_lowerleg"/>
 			<axis xyz="0 0 1"/>
 			<limit effort="150.0" velocity="12.0"
-          lower="${-(1+reflect_front)*7*PI/18+(1-reflect_front)*PI/18}"
-          upper="${(1-reflect_front)*7*PI/18-(1+reflect_front)*PI/18}"/>
+          		   lower="${-(1+reflect_front)*7*PI/18+(1-reflect_front)*PI/18}"
+                   upper="${(1-reflect_front)*7*PI/18-(1+reflect_front)*PI/18}"/>
+		    <dynamics damping="100" friction="1000" />	
 		</joint>
 
 		<!-- Foot joint -->

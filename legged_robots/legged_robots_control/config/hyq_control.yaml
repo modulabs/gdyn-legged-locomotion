@@ -22,10 +22,10 @@ hyq:
         - rh_hfe_joint
         - rh_kfe_joint
       gains:
-        lf_haa_joint: {p: 300.0, d: 50.0}
-        lf_hfe_joint: {p: 100.0, d: 20.0}
-        lf_kfe_joint: {p: 100.0, d: 20.0}
-
+        lf_haa_joint: {p: 1000.0, i: 0, d: 63.2}
+        lf_hfe_joint: {p: 1000.0, i: 0, d: 63.2}
+        lf_kfe_joint: {p: 1000.0, i: 0, d: 63.2}
+        
         rf_haa_joint: {p: 300.0, d: 50.0}
         rf_kfe_joint: {p: 100.0, d: 20.0}
         rf_hfe_joint: {p: 100.0, d: 20.0}
@@ -37,3 +37,18 @@ hyq:
         rh_haa_joint: {p: 300.0, d: 50.0}
         rh_kfe_joint: {p: 100.0, d: 20.0}
         rh_hfe_joint: {p: 100.0, d: 20.0}
+
+      root_link: world
+
+      tip_link: 
+        lf: lf_lowerleg
+        rf: rf_lowerleg
+        lh: lh_lowerleg
+        rh: rh_lowerleg
+
+        # lf: lf_foot
+        # rf: rf_foot
+        # lh: lh_foot
+        # rh: rh_foot
+
+        
