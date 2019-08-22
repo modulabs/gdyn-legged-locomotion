@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <boost/scoped_ptr.hpp>
 
 // ros control
@@ -20,9 +21,12 @@
 #include <kdl/chain.hpp>
 #include <kdl/chaindynparam.hpp>
 #include <kdl_parser/kdl_parser.hpp>
+#include <kdl/chainfksolverpos_recursive.hpp> // forward kinematics
 
 #include <legged_controllers/ControllerJointState.h>
 #include <legged_controllers/UpdateGain.h>
+
+#include <legged_controllers/balance_controller.h>
 
 #define PI 3.141592
 #define D2R PI/180.0
@@ -63,15 +67,27 @@ private:
 
 	// kdl
 	KDL::Tree 	_kdl_tree;
-	KDL::Chain	_kdl_chain;
-
+	std::array<KDL::Chain, 4>	_kdl_chain;
+	std::array<boost::scoped_ptr<KDL::ChainFkSolverPos_recursive>, 4> _fk_solver;
 
 	// cmd, state
 	realtime_tools::RealtimeBuffer<std::vector<double> > _commands_buffer;
+	realtime_tools::RealtimeBuffer<std::vector<double> > _gains_kp_buffer;
+	realtime_tools::RealtimeBuffer<std::vector<double> > _gains_kd_buffer;
+
+
+	std::array<KDL::JntArray,4> _q_leg;
 	KDL::JntArray _tau_d, _tau_fric;
 	KDL::JntArray _q_d, _qdot_d, _qddot_d, _q_d_old, _qdot_d_old;
 	KDL::JntArray _q, _qdot;
 	KDL::JntArray _q_error, _qdot_error;
+
+	//
+	std::array<KDL::Vector, 4> _p_leg;
+	std::array<KDL::Vector, 4> _F_leg;
+
+	// 
+	BalanceController _balance_controller;
 
 	// gain
 	KDL::JntArray _kp, _kd;

@@ -24,7 +24,7 @@ hyq:
       gains:
         lf_haa_joint: {p: 300.0, d: 50.0}
         lf_hfe_joint: {p: 100.0, d: 20.0}
-        lf_kfe_joint: {p: 500.0, d: 20.0}
+        lf_kfe_joint: {p: 100.0, d: 1.0}
 
         rf_haa_joint: {p: 300.0, d: 50.0}
         rf_kfe_joint: {p: 100.0, d: 20.0}

@@ -58,6 +58,32 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 		_joint_urdfs.push_back(joint_urdf); 
 	}
 
+	// kdl parser
+	if (!kdl_parser::treeFromUrdfModel(urdf, _kdl_tree)){
+		ROS_ERROR("Failed to construct kdl tree");
+		return false;
+	}
+
+	// kdl chain
+	std::string root_name, tip_name[4];
+	root_name = "trunk";
+	tip_name[0] = "lf_foot"; tip_name[1] = "rf_foot"; tip_name[2] = "lh_foot"; tip_name[3] = "rh_foot";
+	for (int i=0; i<4; i++)
+	{
+		if(!_kdl_tree.getChain(root_name, tip_name[i], _kdl_chain[i]))
+		{
+			ROS_ERROR_STREAM("Failed to get KDL chain from tree: ");
+			ROS_ERROR_STREAM("  "<<root_name<<" --> "<<tip_name);
+
+			return false;
+		}
+		else
+		{
+			_fk_solver[i].reset(new KDL::ChainFkSolverPos_recursive(_kdl_chain[i]));
+		}
+	}
+	
+
 	// command and state
 	_tau_d.data = Eigen::VectorXd::Zero(_n_joints);
 	_tau_fric.data = Eigen::VectorXd::Zero(_n_joints);
@@ -76,6 +102,11 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 	// gains
 	_kp.resize(_n_joints);
 	_kd.resize(_n_joints);
+
+	// service updating gain
+	_gains_kp_buffer.writeFromNonRT(std::vector<double>(_n_joints, 0.0));
+	_gains_kd_buffer.writeFromNonRT(std::vector<double>(_n_joints, 0.0));
+	_update_gain_srv = n.advertiseService("update_gain", &LegController::updateGain, this);
 
 	updateGain();
 
@@ -102,11 +133,11 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 		_controller_state_pub->msg_.effort_feedback.push_back(0.0);
 	}
 
-	// service updating gain
-	// auto srv_func_callback = boost::bind(&LegController::updateGain, _1, _2);
-	_update_gain_srv = n.advertiseService("update_gain", &LegController::updateGain, this);
-	// _update_gain_srv = n.advertiseService("update_gain", srv_func_callback, this);
-
+	// thread: balance controller
+	double m_body, mu;
+	KDL::RotationalInertia I_com;
+	_balance_controller.init(m_body, I_com, mu);
+	
 	return true;
 }
 
@@ -147,7 +178,7 @@ bool LegController::updateGain()
 		gain_name = "/hyq/leg_controller/gains/" + _joint_names[i] + "/p";
 		if (_node_ptr->getParam(gain_name, kp[i]))
 		{
-			_kp(i) = kp[i];
+			ROS_INFO("Updage gain %s = %.2f", gain_name.c_str(), kp[i]);
 		}
 		else
 		{
@@ -156,9 +187,9 @@ bool LegController::updateGain()
 		}
 
 		gain_name = "/hyq/leg_controller/gains/" + _joint_names[i] + "/d";
-		if (_node_ptr->getParam(gain_name, kp[i]))
+		if (_node_ptr->getParam(gain_name, kd[i]))
 		{
-			_kp(i) = kp[i];
+			ROS_INFO("Updage gain %s = %.2f", gain_name.c_str(), kd[i]);
 		}
 		else
 		{
@@ -167,55 +198,62 @@ bool LegController::updateGain()
 		}
 	}
 
+	_gains_kp_buffer.writeFromNonRT(kp);
+	_gains_kd_buffer.writeFromNonRT(kd);
+
 	return true;
 }
 
 void LegController::update(const ros::Time& time, const ros::Duration& period)
 {
 	std::vector<double> & commands = *_commands_buffer.readFromRT();
+	std::vector<double> & kp = *_gains_kp_buffer.readFromRT();
+	std::vector<double> & kd = *_gains_kd_buffer.readFromRT();
 	double dt = period.toSec();
 	double q_d_old;
 
-	// get joint states
+	// update gains and joint commands/states
 	static double t = 0;
 	for (size_t i=0; i<_n_joints; i++)
 	{
-		// _q_d(i) = 0*D2R*sin(PI/2*t);
-		_q_d(i) = 10*D2R;
-		// _q_d(i) = 30*D2R*sin(PI/2*t);
-		//_q_d(i) = commands[i];
-
-		enforceJointLimits(_q_d(i), i);
-		_q(i) = _joints[i].getPosition();
-		_qdot(i) = _joints[i].getVelocity();
-
-		// Compute position error
-		angles::shortest_angular_distance_with_limits(
-			_q(i),
-			_q_d(i),
-			_joint_urdfs[i]->limits->lower,
-			_joint_urdfs[i]->limits->upper,
-			_q_error(i));
-
-		_qdot_d(i) = 0*D2R*PI/2*cos(PI/2*t); // (_q_d(i) - _q_d_old(i)) / period.toSec();;
-		_qddot_d(i) = -0*D2R*PI*PI/2/2*sin(PI/2*t); // (_qdot_d(i) - _qdot_d_old(i)) / period.toSec();
-
-		_qdot_error(i) = _qdot_d(i) - _qdot(i);
-
-		_q_d_old(i) = _q_d(i);
-		_qdot_d_old(i) = _qdot_d(i);
+		// gains
+		_kp(i) = kp[i];
+		_kd(i) = kd[i];
 	}
-	
-	t += dt;
-	
+
+	// update state
+	KDL::Vector p_com;
+
+	// update trajectory
+	KDL::Vector p_com_d, p_com_dot_d, w_body_d, w_body;
+	KDL::Rotation R_body_d, R_body;
+
+	// forward kinematics
+	std::array<KDL::Frame,4> frame_leg;
+	for (size_t i=0; i<4; i++)
+	{
+		_fk_solver[i]->JntToCart(_q_leg[i], frame_leg[i]);
+		_p_leg[i] = frame_leg[i].p;
+	}	
+
+	// balance controller
+	_balance_controller.setControlInput(p_com_d, p_com_dot_d, R_body_d, w_body_d,
+							p_com, _p_leg, R_body, w_body);
+
+	_balance_controller.update();
+
+	_balance_controller.getControlOutput(_F_leg);		
+
+	// force to torque
+	for (size_t i=0; i<4; i++)
+	{
+		// _tau_d = J[i].transpose() * _F_leg[i];	// position jacobian transpose mapping
+	}
+
 	// torque command
 	for(int i=0; i<_n_joints; i++)
 	{
-		if (i==2)
-			_tau_d(i) = _kp(i)*_q_error(i) + _kd(i)*_qdot_error(i);
-		else
-		 	_tau_d(i) = 0.0;
-
+		_tau_d(i) = _kp(i)*_q_error(i) + _kd(i)*_qdot_error(i);
 
 		// effort saturation
 		if (_tau_d(i) >= _joint_urdfs[i]->limits->effort)
