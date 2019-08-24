@@ -33,6 +33,8 @@ void BalanceController::getControlOutput(std::array<KDL::Vector, 4>& F_leg)
 
 void BalanceController::update()
 {
+    // Not tested yet
+    
     // Dynamics
     Eigen::Matrix<double, 6, 12> A;
     Eigen::Matrix<double, 12, 1> F;
@@ -45,16 +47,22 @@ void BalanceController::update()
     // Transform to QP optimizer form
     Eigen::Matrix<double, 14, 14, Eigen::RowMajor> H = Eigen::Matrix<double, 14, 14, Eigen::RowMajor>::Zero();
     Eigen::Matrix<double, 12, 1> g;
-    double r;
-    Eigen::Matrix<double, 8, 3> C;
+    Eigen::Matrix<double, 8, 3, Eigen::RowMajor> C = Eigen::Matrix<double, 8, 3, Eigen::RowMajor>::Zero();
 
     H.topLeftCorner(12, 12) = A.transpose()*S*A;
     H(12, 12) = alpha;
     H(13, 13) = beta;
 
     g = -A.transpose()*S*bd - beta*F_prev;
-    r = bd.transpose()*S*bd + beta*pow(F_prev.norm(), 2);
 
+    C << 1, 0, -_mu,
+        0, 1, -_mu,
+        1, 0, -_mu,
+        0, 1, -_mu,
+        1, 0, -_mu,
+        0, 1, -_mu,
+        1, 0, -_mu,
+        0, 1, -_mu;
 
     // Optimization
     USING_NAMESPACE_QPOASES
@@ -70,7 +78,7 @@ void BalanceController::update()
 	qp_problem.setOptions( options );
 
     int nWSR = 10;
-    qp_problem.init(H.data(), g.data(), A_, lb, ub, lbA, NULL, nWSR);
+    qp_problem.init(H.data(), g.data(), C.data(), lb, ub, lbA, NULL, nWSR);
 
 	real_t xOpt[12];
 	real_t yOpt[12+1];
