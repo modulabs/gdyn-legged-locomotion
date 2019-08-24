@@ -19,14 +19,18 @@
 #include <kdl/tree.hpp>
 #include <kdl/kdl.hpp>
 #include <kdl/chain.hpp>
-#include <kdl/chaindynparam.hpp>
 #include <kdl_parser/kdl_parser.hpp>
-#include <kdl/chainfksolverpos_recursive.hpp> // forward kinematics
+#include <kdl/chainfksolverpos_recursive.hpp> // forward kinematics: position
+#include <kdl/chainfksolvervel_recursive.hpp> // forward kinematics: velocity
+#include <kdl/chainjnttojacsolver.hpp>        // jacobian
+#include <kdl/chaindynparam.hpp>              // inverse dynamics
+
 
 #include <legged_controllers/ControllerJointState.h>
 #include <legged_controllers/UpdateGain.h>
 
 #include <legged_controllers/balance_controller.h>
+#include <legged_controllers/virtaul_spring_damper_controller.h>
 
 #define PI 3.141592
 #define D2R PI/180.0
@@ -52,9 +56,11 @@ public:
 	void update(const ros::Time& time, const ros::Duration& period);
 
 	void enforceJointLimits(double &command, unsigned int index);
+	void print_state();
 
 private:
 	int _loop_count;
+	double _t;
 
 	// ros nodehandle
 	ros::NodeHandle* _node_ptr;
@@ -66,28 +72,42 @@ private:
 	std::vector<urdf::JointConstSharedPtr> _joint_urdfs;
 
 	// kdl
+	boost::scoped_ptr<KDL::Vector> _gravity;
 	KDL::Tree 	_kdl_tree;
 	std::array<KDL::Chain, 4>	_kdl_chain;
-	std::array<boost::scoped_ptr<KDL::ChainFkSolverPos_recursive>, 4> _fk_solver;
+	std::array<boost::scoped_ptr<KDL::ChainFkSolverPos_recursive>, 4> _fk_pos_solver;
+	std::array<boost::scoped_ptr<KDL::ChainJntToJacSolver>, 4> _jnt_to_jac_solver; 
+	std::array<boost::scoped_ptr<KDL::ChainDynParam>, 4> _id_solver;               
 
 	// cmd, state
 	realtime_tools::RealtimeBuffer<std::vector<double> > _commands_buffer;
 	realtime_tools::RealtimeBuffer<std::vector<double> > _gains_kp_buffer;
 	realtime_tools::RealtimeBuffer<std::vector<double> > _gains_kd_buffer;
 
-
-	std::array<KDL::JntArray,4> _q_leg;
+	//
 	KDL::JntArray _tau_d, _tau_fric;
 	KDL::JntArray _q_d, _qdot_d, _qddot_d, _q_d_old, _qdot_d_old;
 	KDL::JntArray _q, _qdot;
 	KDL::JntArray _q_error, _qdot_error;
 
 	//
+	std::array<KDL::JntArray,4> _q_leg, _qdot_leg;
 	std::array<KDL::Vector, 4> _p_leg;
-	std::array<KDL::Vector, 4> _F_leg;
+	std::array<Eigen::Vector3d, 4> _v_leg;
+	std::array<Eigen::Vector3d, 4> _F_leg;
+	std::array<Eigen::Vector3d, 4> _tau_leg;
+	std::array<KDL::Jacobian, 4> _J_leg;
+	std::array<Eigen::MatrixXd, 4> _Jv_leg;
+
+	//
+	std::array<KDL::JntSpaceInertiaMatrix, 4> _M_leg; // joint space intertia matrix
+    std::array<KDL::JntArray, 4> _C_leg;              // coriolis vector
+    std::array<KDL::JntArray, 4> _G_leg;              // gravity torque vector
+
 
 	// 
 	BalanceController _balance_controller;
+	VirtualSpringDamperController _virtual_spring_damper_controller;
 
 	// gain
 	KDL::JntArray _kp, _kd;

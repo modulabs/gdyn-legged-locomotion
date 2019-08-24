@@ -66,8 +66,12 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 
 	// kdl chain
 	std::string root_name, tip_name[4];
+
 	root_name = "trunk";
 	tip_name[0] = "lf_foot"; tip_name[1] = "rf_foot"; tip_name[2] = "lh_foot"; tip_name[3] = "rh_foot";
+
+	_gravity.reset(new KDL::Vector(0.0, 0.0, -9.81));
+
 	for (int i=0; i<4; i++)
 	{
 		if(!_kdl_tree.getChain(root_name, tip_name[i], _kdl_chain[i]))
@@ -79,12 +83,14 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 		}
 		else
 		{
-			_fk_solver[i].reset(new KDL::ChainFkSolverPos_recursive(_kdl_chain[i]));
+			_fk_pos_solver[i].reset(new KDL::ChainFkSolverPos_recursive(_kdl_chain[i]));
+			_jnt_to_jac_solver[i].reset(new KDL::ChainJntToJacSolver(_kdl_chain[i]));
+			_id_solver[i].reset(new KDL::ChainDynParam(_kdl_chain[i],*_gravity));
 		}
 	}
 	
 
-	// command and state
+	// command and state (12x1)
 	_tau_d.data = Eigen::VectorXd::Zero(_n_joints);
 	_tau_fric.data = Eigen::VectorXd::Zero(_n_joints);
 	_q_d.data = Eigen::VectorXd::Zero(_n_joints);
@@ -98,6 +104,22 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 
 	_q_error.data = Eigen::VectorXd::Zero(_n_joints);
 	_qdot_error.data = Eigen::VectorXd::Zero(_n_joints);
+
+    // command and state divided into each legs (4x3)
+	for (int i=0; i<4; i++)
+	{
+        // joint state
+        _q_leg[i].resize(3);
+		_qdot_leg[i].resize(3);
+
+		// Jacobian
+		_J_leg[i].resize(3);
+
+		// Dynamics
+		_M_leg[i].resize(3);
+		_C_leg[i].resize(3);
+		_G_leg[i].resize(3);
+    }
 
 	// gains
 	_kp.resize(_n_joints);
@@ -137,12 +159,17 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 	double m_body, mu;
 	KDL::RotationalInertia I_com;
 	_balance_controller.init(m_body, I_com, mu);
+
+	// thread: virtaul spring damper controller
+	_virtual_spring_damper_controller.init();
 	
 	return true;
 }
 
 void LegController::starting(const ros::Time& time)
 {
+	_t = 0;
+	
 	// get joint positions
 	for(size_t i=0; i<_n_joints; i++) 
 	{
@@ -172,13 +199,14 @@ bool LegController::updateGain()
 {
 	std::vector<double> kp(_n_joints), kd(_n_joints);
 	std::string gain_name;
+
 	for (size_t i = 0; i < _n_joints; i++)
 	{
 		// FIXME. generalize name of robot
 		gain_name = "/hyq/leg_controller/gains/" + _joint_names[i] + "/p";
 		if (_node_ptr->getParam(gain_name, kp[i]))
 		{
-			ROS_INFO("Updage gain %s = %.2f", gain_name.c_str(), kp[i]);
+			ROS_INFO("Update gain %s = %.2f", gain_name.c_str(), kp[i]);
 		}
 		else
 		{
@@ -189,7 +217,7 @@ bool LegController::updateGain()
 		gain_name = "/hyq/leg_controller/gains/" + _joint_names[i] + "/d";
 		if (_node_ptr->getParam(gain_name, kd[i]))
 		{
-			ROS_INFO("Updage gain %s = %.2f", gain_name.c_str(), kd[i]);
+			ROS_INFO("Update gain %s = %.2f", gain_name.c_str(), kd[i]);
 		}
 		else
 		{
@@ -212,16 +240,46 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	double dt = period.toSec();
 	double q_d_old;
 
+	_t += dt;
+
+
 	// update gains and joint commands/states
-	static double t = 0;
 	for (size_t i=0; i<_n_joints; i++)
 	{
+		// state
+		_q(i) = _joints[i].getPosition();
+		_qdot(i) = _joints[i].getVelocity();
+		
 		// gains
 		_kp(i) = kp[i];
 		_kd(i) = kd[i];
 	}
 
-	// update state
+	// update state from tree (12x1) to each leg (4x3)
+	for (size_t i = 0; i < _n_joints; i++)
+	{
+		if (i < 3)
+		{
+			_q_leg[0](i) = _q(i);
+			_qdot_leg[0](i) = _qdot(i);
+		}
+		else if (i < 6)
+		{
+			_q_leg[1](i - 3) = _q(i);
+			_qdot_leg[1](i - 3) = _qdot(i);
+		}
+		else if (i < 9)
+		{
+			_q_leg[2](i - 6) = _q(i);
+			_qdot_leg[2](i - 6) = _qdot(i);
+		}
+		else
+		{
+			_q_leg[3](i - 9) = _q(i);
+			_qdot_leg[3](i - 9) = _qdot(i);
+		}
+	}
+
 	KDL::Vector p_com;
 
 	// update trajectory
@@ -230,31 +288,72 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 
 	// forward kinematics
 	std::array<KDL::Frame,4> frame_leg;
+
 	for (size_t i=0; i<4; i++)
 	{
-		_fk_solver[i]->JntToCart(_q_leg[i], frame_leg[i]);
+		_fk_pos_solver[i]->JntToCart(_q_leg[i], frame_leg[i]);
+
+		_jnt_to_jac_solver[i]->JntToJac(_q_leg[i], _J_leg[i]);
+		_Jv_leg[i] = _J_leg[i].data.block(0,0,3,3);	
 		_p_leg[i] = frame_leg[i].p;
-	}	
+		_v_leg[i] = _Jv_leg[i]*_qdot_leg[i].data;
 
-	// balance controller
-	_balance_controller.setControlInput(p_com_d, p_com_dot_d, R_body_d, w_body_d,
-							p_com, _p_leg, R_body, w_body);
+		_id_solver[i]->JntToMass(_q_leg[i], _M_leg[i]);
+		_id_solver[i]->JntToCoriolis(_q_leg[i], _qdot_leg[i], _C_leg[i]);
+        _id_solver[i]->JntToGravity(_q_leg[i], _G_leg[i]);
+	}
 
-	_balance_controller.update();
+	// // * v.01 - force calculation controller: Set force zero (_F_leg   -   Eigen::Vector3d)
+	// for (size_t i=0; i<4; i++)
+	// {
+	// 	_F_leg[i].setZero(3);
+	// }
 
-	_balance_controller.getControlOutput(_F_leg);		
+	// * v.02 - force calculation controller: Set virtual spring force controller (_F_leg   -   Eigen::Vector3d)
+	_virtual_spring_damper_controller.setControlInput(_p_leg,_v_leg,_G_leg);
+	_virtual_spring_damper_controller.compute();
+	_virtual_spring_damper_controller.getControlOutput(_F_leg);
 
-	// force to torque
+	// * v.03 - force calculation controller: balance controller by MIT cheetah (_F_leg  -  KDL::Vector)
+	// _balance_controller.setControlInput(p_com_d, p_com_dot_d, R_body_d, w_body_d,
+	// 						p_com, _p_leg, R_body, w_body);
+
+	// _balance_controller.update();
+
+	// _balance_controller.getControlOutput(_F_leg);
+
+	
+	// convert force to torque	
 	for (size_t i=0; i<4; i++)
 	{
-		// _tau_d = J[i].transpose() * _F_leg[i];	// position jacobian transpose mapping
+		_tau_leg[i] = _Jv_leg[i].transpose() * _F_leg[i];
+		//_tau_leg[i] << 0, 0, 0;
 	}
 
 	// torque command
 	for(int i=0; i<_n_joints; i++)
 	{
-		_tau_d(i) = _kp(i)*_q_error(i) + _kd(i)*_qdot_error(i);
+		if (i < 3)
+		{
+			_tau_d(i) = _tau_leg[0](i);
+		}
+		else if (i < 6)
+		{
+			_tau_d(i) = _tau_leg[1](i-3);
+		}
+		else if (i < 9)
+		{
+			_tau_d(i) = _tau_leg[2](i-6);
+		}
+		else
+		{
+			_tau_d(i) = _tau_leg[3](i-9);
+		}
 
+	}
+
+	for(int i=0; i<_n_joints; i++)
+	{
 		// effort saturation
 		if (_tau_d(i) >= _joint_urdfs[i]->limits->effort)
 			_tau_d(i) = _joint_urdfs[i]->limits->effort;
@@ -285,6 +384,9 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 			_controller_state_pub->unlockAndPublish();
 		}
 	}
+
+    // ********* printf state *********
+	print_state();
 }
 
 void LegController::enforceJointLimits(double &command, unsigned int index)
@@ -292,17 +394,177 @@ void LegController::enforceJointLimits(double &command, unsigned int index)
 	// Check that this joint has applicable limits
 	if (_joint_urdfs[index]->type == urdf::Joint::REVOLUTE || _joint_urdfs[index]->type == urdf::Joint::PRISMATIC)
 	{
-	if( command > _joint_urdfs[index]->limits->upper ) // above upper limnit
-	{
-		command = _joint_urdfs[index]->limits->upper;
-	}
-	else if( command < _joint_urdfs[index]->limits->lower ) // below lower limit
-	{
-		command = _joint_urdfs[index]->limits->lower;
-	}
+		if (command > _joint_urdfs[index]->limits->upper) // above upper limnit
+		{
+			command = _joint_urdfs[index]->limits->upper;
+		}
+		else if (command < _joint_urdfs[index]->limits->lower) // below lower limit
+		{
+			command = _joint_urdfs[index]->limits->lower;
+		}
 	}
 }
 
+void LegController::print_state()
+{
+	static int count = 0;
+	if (count > 990)
+	{
+		printf("*********************************************************\n\n");
+		printf("*** Simulation Time (unit: sec)  ***\n");
+		printf("t = %f\n", _t);
+		printf("\n");
+
+		printf("*********************** Left Front Leg **********************************\n\n");
+
+		printf("*** Actual Position in Joint Space (unit: deg) ***\n");
+		printf("q(1): %f, ", _q_leg[0](0) * R2D);
+		printf("q(2): %f, ", _q_leg[0](1) * R2D);
+		printf("q(3): %f, ", _q_leg[0](2) * R2D);
+		printf("\n");
+		printf("\n");
+
+		printf("*** Actual Position in Task Space (unit: m) ***\n");
+		printf("x(1): %f, ", _p_leg[0](0) * 1);
+		printf("x(2): %f, ", _p_leg[0](1) * 1);
+		printf("x(3): %f, ", _p_leg[0](2) * 1);
+		printf("\n");
+		printf("\n");
+
+		printf("*** Virtual Leg Forces (unit: N) ***\n");
+		printf("X Force Input: %f, ", _F_leg[0](0));
+		printf("Y Force Input: %f, ", _F_leg[0](1));
+		printf("Z Force Input: %f, ", _F_leg[0](2));
+		printf("\n");
+		printf("\n");
+
+		printf("*** Torque Input (unit: Nm) ***\n");
+		printf("Hip AA Input: %f, ", _tau_leg[0](0));
+		printf("Hip FE Input: %f, ", _tau_leg[0](1));
+		printf("Knee FE Input: %f, ", _tau_leg[0](2));
+		printf("\n");
+		printf("\n");
+
+		// printf("*** Gravity Compensation Torque Input(unit: Nm) ***\n");
+		// printf("Hip AA Input: %f, ", _G_leg[0](0));
+		// printf("Hip FE Input: %f, ", _G_leg[0](1));
+		// printf("Knee FE Input: %f, ", _G_leg[0](2));
+		// printf("\n");
+		// printf("\n");
+
+		printf("*********************** Right Front Leg **********************************\n\n");
+		printf("*** Actual Position in Joint Space (unit: deg) ***\n");
+		printf("q(1): %f, ", _q_leg[1](0) * R2D);
+		printf("q(2): %f, ", _q_leg[1](1) * R2D);
+		printf("q(3): %f, ", _q_leg[1](2) * R2D);
+		printf("\n");
+		printf("\n");
+
+		printf("*** Actual Position in Task Space (unit: m) ***\n");
+		printf("x(1): %f, ", _p_leg[1](0) * 1);
+		printf("x(2): %f, ", _p_leg[1](1) * 1);
+		printf("x(3): %f, ", _p_leg[1](2) * 1);
+		printf("\n");
+		printf("\n");
+
+		printf("*** Virtual Leg Forces (unit: N) ***\n");
+		printf("X Force Input: %f, ", _F_leg[1](0));
+		printf("Y Force Input: %f, ", _F_leg[1](1));
+		printf("Z Force Input: %f, ", _F_leg[1](2));
+		printf("\n");
+		printf("\n");
+
+		printf("*** Torque Input (unit: Nm) ***\n");
+		printf("Hip AA Input: %f, ", _tau_leg[1](0));
+		printf("Hip FE Input: %f, ", _tau_leg[1](1));
+		printf("Knee FE Input: %f, ", _tau_leg[1](2));
+		printf("\n");
+		printf("\n");
+
+		// printf("*** Gravity Compensation Torque Input(unit: Nm) ***\n");
+		// printf("Hip AA Input: %f, ", _G_leg[1](0));
+		// printf("Hip FE Input: %f, ", _G_leg[1](1));
+		// printf("Knee FE Input: %f, ", _G_leg[1](2));
+		// printf("\n");
+		// printf("\n");
+
+		printf("*********************** Left Hind Leg **********************************\n\n");
+		printf("*** Actual Position in Joint Space (unit: deg) ***\n");
+		printf("q(1): %f, ", _q_leg[2](0) * R2D);
+		printf("q(2): %f, ", _q_leg[2](1) * R2D);
+		printf("q(3): %f, ", _q_leg[2](2) * R2D);
+		printf("\n");
+		printf("\n");
+
+		printf("*** Actual Position in Task Space (unit: m) ***\n");
+		printf("x(1): %f, ", _p_leg[2](0) * 1);
+		printf("x(2): %f, ", _p_leg[2](1) * 1);
+		printf("x(3): %f, ", _p_leg[2](2) * 1);
+		printf("\n");
+		printf("\n");
+
+		printf("*** Virtual Leg Forces (unit: N) ***\n");
+		printf("X Force Input: %f, ", _F_leg[2](0));
+		printf("Y Force Input: %f, ", _F_leg[2](1));
+		printf("Z Force Input: %f, ", _F_leg[2](2));
+		printf("\n");
+		printf("\n");
+
+		printf("*** Torque Input (unit: Nm) ***\n");
+		printf("Hip AA Input: %f, ", _tau_leg[2](0));
+		printf("Hip FE Input: %f, ", _tau_leg[2](1));
+		printf("Knee FE Input: %f, ", _tau_leg[2](2));
+		printf("\n");
+		printf("\n");
+
+		// printf("*** Gravity Compensation Torque Input(unit: Nm) ***\n");
+		// printf("Hip AA Input: %f, ", _G_leg[2](0));
+		// printf("Hip FE Input: %f, ", _G_leg[2](1));
+		// printf("Knee FE Input: %f, ", _G_leg[2](2));
+		// printf("\n");
+		// printf("\n");
+
+		printf("*********************** Right Hind Leg **********************************\n\n");
+		printf("*** Actual Position in Joint Space (unit: deg) ***\n");
+		printf("q(1): %f, ", _q_leg[3](0) * R2D);
+		printf("q(2): %f, ", _q_leg[3](1) * R2D);
+		printf("q(3): %f, ", _q_leg[3](2) * R2D);
+		printf("\n");
+		printf("\n");
+
+		printf("*** Actual Position in Task Space (unit: m) ***\n");
+		printf("x(1): %f, ", _p_leg[3](0) * 1);
+		printf("x(2): %f, ", _p_leg[3](1) * 1);
+		printf("x(3): %f, ", _p_leg[3](2) * 1);
+		printf("\n");
+		printf("\n");
+
+		printf("*** Virtual Leg Forces (unit: N) ***\n");
+		printf("X Force Input: %f, ", _F_leg[3](0));
+		printf("Y Force Input: %f, ", _F_leg[3](1));
+		printf("Z Force Input: %f, ", _F_leg[3](2));
+		printf("\n");
+		printf("\n");
+
+		printf("*** Torque Input (unit: Nm) ***\n");
+		printf("Hip AA Input: %f, ", _tau_leg[3](0));
+		printf("Hip FE Input: %f, ", _tau_leg[3](1));
+		printf("Knee FE Input: %f, ", _tau_leg[3](2));
+		printf("\n");
+		printf("\n");
+
+		// printf("*** Gravity Compensation Torque Input(unit: Nm) ***\n");
+		// printf("Hip AA Input: %f, ", _G_leg[3](0));
+		// printf("Hip FE Input: %f, ", _G_leg[3](1));
+		// printf("Knee FE Input: %f, ", _G_leg[3](2));
+		// printf("\n");
+		// printf("\n");
+
+		count = 0;
+	}
+	count++;
 }
+
+} // namespace legged_controllers
 PLUGINLIB_EXPORT_CLASS(legged_controllers::LegController, controller_interface::ControllerBase)
 
