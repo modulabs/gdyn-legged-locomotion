@@ -10,8 +10,8 @@ Just download this package in your catkin workspace, and build.
 Download this package in your catkin workspace, and build.
 This package depends on cython. Install cython using pip.
 
-```console
-pip install cython
+```bash
+$ pip install cython
 ```
 
 ## References
