@@ -1,10 +1,20 @@
 # gdyn-legged-locomotion
 4-Legged Robot Project of 강남Dynamics Lab
 
-## Depend
-[spawn_robot_tools](https://bitbucket.org/theconstructcore/spawn_robot_tools/src/master/)
+## Dependencies
 
-## Refence
+[spawn_robot_tools](https://bitbucket.org/theconstructcore/spawn_robot_tools/src/master/)
+Just download this package in your catkin workspace, and build.
+
+[ROS wrapper of qpOASES](https://github.com/SemRoCo/qpOASES)
+Download this package in your catkin workspace, and build.
+This package depends on cython. Install cython using pip.
+
+```console
+pip install cython
+```
+
+## References
 
 ### Robot Models
 We brought several robot models from the other github sites, however only hyq works in gazebo.
@@ -20,3 +30,4 @@ Reference papers.
 1. [Construct, ROS Lecture](http://www.theconstructsim.com/ros-projects-create-hopper-robot-gazebo-step-step/)
 2. [MIT Cheetah 3](https://ieeexplore.ieee.org/document/8593885)
 3. [MPC, MIT Cheetah 3](https://www.researchgate.net/publication/330591547_Dynamic_Locomotion_in_the_MIT_Cheetah_3_Through_Convex_Model-Predictive_Control)
+4. [Quadratic Programming Library, qpOASES](https://projects.coin-or.org/qpOASES)
