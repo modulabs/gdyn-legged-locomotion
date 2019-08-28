@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+
+	<xacro:include filename="$(find sensors_description)/urdfs/sensors/imu.gazebo.xacro"/>
+
+
+	<!-- ============================ IMU KVH 1775 ============================== -->
+	<!-- The xacro macro xacro:kvh_1775_imu: imu frame -->
+	<xacro:macro name="kvh_1775_imu" params="parent *origin imu_name imu_topic update_rate">
+
+		<!-- Joint -->
+		<joint name="${imu_name}_joint" type="fixed">
+			<xacro:insert_block name="origin"/>
+			<parent link="${parent}" />
+			<child link="${imu_name}"/>
+		</joint>
+
+		<!-- Link -->
+		<link name="${imu_name}">
+			<inertial>
+				<origin xyz="-0.001  0.0005  -0.00405"/>
+				<mass value="0.7"/>
+				<inertia ixx="0.0" iyy="0.0" izz="0.0" ixy="0.0" ixz="0.0" iyz="0.0"/>
+			</inertial>
+			<visual>
+				<origin xyz="0.0213 -0.0029 -0.00155" rpy="0 0 0"/>
+				<origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
+				<geometry>
+					<cylinder radius="0.0482" length="0.0737" />
+				</geometry>
+				<material name="aluminium">
+					<color rgba="0.35 0.35 0.35 1" />
+				</material>
+			</visual>
+		</link>
+
+		<!-- IMU definition -->
+		<xacro:imu_sensor imu_name="${imu_name}" imu_topic="${imu_topic}"
+		 	update_rate="${update_rate}"
+			rate_mean="${kvh_1775_vel_mean}"
+		 	rate_stddev="${kvh_1775_vel_stddev}"
+		 	rate_bias_mean="${kvh_1775_vel_bias_mean}"
+		 	rate_bias_stddev="${kvh_1775_vel_bias_stddev}"
+		 	accel_mean="${kvh_1775_acc_mean}"
+		 	accel_stddev="${kvh_1775_acc_stddev}"
+			accel_bias_mean="${kvh_1775_acc_bias_mean}"
+		 	accel_bias_stddev="${kvh_1775_acc_bias_stddev}"/>
+		
+	</xacro:macro>
+
+</robot>

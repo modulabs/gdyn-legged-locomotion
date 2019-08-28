@@ -13,6 +13,8 @@
 	<!-- HyQ legs -->
 	<xacro:include filename="$(find legged_robots_description)/urdf/hyq/leg.urdf.xacro"/>
 
+    <!-- HyQ sensors -->
+	<xacro:include filename="$(find sensors_description)/urdfs/sensors/microstrain_3dmgx425_imu.urdf.xacro"/>
 
 	<!-- Using the macros defined above -->
 	<!-- trunk -->
@@ -57,5 +59,14 @@
 		reflect_front="-1">
 		<origin xyz="${-d_fh/2} ${-d_lr/2} 0" rpy="0 ${PI/2} 0"/>
 	</xacro:hyq_leg>
+
+	<!-- IMU trunk -->
+	<xacro:microstrain_3dmgx425_imu
+		parent="trunk"
+		imu_name="trunk_imu"
+		imu_topic="trunk_imu_1/data"
+		update_rate="250">
+		<origin xyz="0.290 0.000 0.0999214" rpy="0 ${-PI} 0"/>
+	</xacro:microstrain_3dmgx425_imu>
 
 </robot>
