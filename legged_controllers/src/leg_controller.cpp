@@ -327,8 +327,7 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	_balance_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d,
 							p_body, p_body_dot, R_body, w_body, _p_leg);
 	_balance_controller.update();
-	std::array<Eigen::Vector3d, 4> F_leg_balance;
-	_balance_controller.getControlOutput(F_leg_balance);
+	_balance_controller.getControlOutput(_F_leg_balance);
 
 	
 	// convert force to torque	
@@ -387,7 +386,7 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 				for(int j=0; j<3; j++)
 				{
 					_controller_state_pub->msg_.effort_command[i*3+j] = _F_leg[i](j);
-					_controller_state_pub->msg_.effort_feedback[i*3+j] = F_leg_balance[i](j);
+					_controller_state_pub->msg_.effort_feedback[i*3+j] = _F_leg_balance[i](j);
 				}
 			}
 			_controller_state_pub->unlockAndPublish();
@@ -448,9 +447,9 @@ void LegController::print_state()
 		printf("\n");
 
 		printf("*** Balance Leg Forces (unit: N) ***\n");
-		printf("X Force Input: %f, ", _F_leg[0](0));
-		printf("Y Force Input: %f, ", _F_leg[0](1));
-		printf("Z Force Input: %f, ", _F_leg[0](2));
+		printf("X Force Input: %f, ", _F_leg_balance[0](0));
+		printf("Y Force Input: %f, ", _F_leg_balance[0](1));
+		printf("Z Force Input: %f, ", _F_leg_balance[0](2));
 		printf("\n");
 		printf("\n");
 
@@ -491,9 +490,9 @@ void LegController::print_state()
 		printf("\n");
 
 		printf("*** Balance Leg Forces (unit: N) ***\n");
-		printf("X Force Input: %f, ", _F_leg[1](0));
-		printf("Y Force Input: %f, ", _F_leg[1](1));
-		printf("Z Force Input: %f, ", _F_leg[1](2));
+		printf("X Force Input: %f, ", _F_leg_balance[1](0));
+		printf("Y Force Input: %f, ", _F_leg_balance[1](1));
+		printf("Z Force Input: %f, ", _F_leg_balance[1](2));
 		printf("\n");
 		printf("\n");
 
@@ -534,9 +533,9 @@ void LegController::print_state()
 		printf("\n");
 
 		printf("*** Balance Leg Forces (unit: N) ***\n");
-		printf("X Force Input: %f, ", _F_leg[2](0));
-		printf("Y Force Input: %f, ", _F_leg[2](1));
-		printf("Z Force Input: %f, ", _F_leg[2](2));
+		printf("X Force Input: %f, ", _F_leg_balance[2](0));
+		printf("Y Force Input: %f, ", _F_leg_balance[2](1));
+		printf("Z Force Input: %f, ", _F_leg_balance[2](2));
 		printf("\n");
 		printf("\n");
 
@@ -577,9 +576,9 @@ void LegController::print_state()
 		printf("\n");
 
 		printf("*** Balance Leg Forces (unit: N) ***\n");
-		printf("X Force Input: %f, ", _F_leg[3](0));
-		printf("Y Force Input: %f, ", _F_leg[3](1));
-		printf("Z Force Input: %f, ", _F_leg[3](2));
+		printf("X Force Input: %f, ", _F_leg_balance[3](0));
+		printf("Y Force Input: %f, ", _F_leg_balance[3](1));
+		printf("Z Force Input: %f, ", _F_leg_balance[3](2));
 		printf("\n");
 		printf("\n");
 

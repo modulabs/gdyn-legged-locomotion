@@ -95,6 +95,7 @@ private:
 	std::array<KDL::Vector, 4> _p_leg;
 	std::array<Eigen::Vector3d, 4> _v_leg;
 	std::array<Eigen::Vector3d, 4> _F_leg;
+	std::array<Eigen::Vector3d, 4> _F_leg_balance; 	// FIXME. temporary
 	std::array<Eigen::Vector3d, 4> _tau_leg;
 	std::array<KDL::Jacobian, 4> _J_leg;
 	std::array<Eigen::MatrixXd, 4> _Jv_leg;
