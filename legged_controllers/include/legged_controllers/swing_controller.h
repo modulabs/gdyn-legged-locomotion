@@ -9,15 +9,18 @@
 #include <kdl/chaindynparam.hpp>
 #include <kdl_parser/kdl_parser.hpp>
 
-class VirtualSpringDamperController
+class SwingController
 {
 public:
-    VirtualSpringDamperController() {}
+    SwingController() {}
 
     void init();
 
     void setControlInput(const std::array<KDL::Vector, 4>& p_leg, 
-                        const std::array<Eigen::Vector3d, 4>& v_leg, 
+                        const std::array<Eigen::Vector3d, 4>& v_leg,
+                        const std::array<Eigen::MatrixXd, 4>& Jv_leg,
+                        const std::array<KDL::JntSpaceInertiaMatrix, 4>& M_leg,
+                        const std::array<KDL::JntArray, 4>& C_leg, 
                         const std::array<KDL::JntArray, 4>& G_leg);
 
     void getControlOutput(std::array<Eigen::Vector3d, 4>& F_leg);
@@ -35,5 +38,9 @@ public:
     std::array<Eigen::Vector3d, 4> _v_leg;
     std::array<Eigen::Vector3d, 4> _F_leg;
 
+    std::array<Eigen::MatrixXd, 4> _Jv_leg;
+
+    std::array<KDL::JntSpaceInertiaMatrix, 4> _M_leg;
+    std::array<KDL::JntArray, 4> _C_leg;
     std::array<KDL::JntArray, 4> _G_leg;
 };
