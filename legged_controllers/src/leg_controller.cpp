@@ -136,6 +136,11 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 	_commands_buffer.writeFromNonRT(std::vector<double>(_n_joints, 0.0));
 	_command_sub = n.subscribe<std_msgs::Float64MultiArray>("command", 1, &LegController::setCommand, this);
 
+	// state subscriber
+	// _states_buffer.writeFromNonRT();
+	// _states_sub = n.subscribe<std_msgs::>("")
+
+
 	// start realtime state publisher
 	_controller_state_pub.reset(
 		new realtime_tools::RealtimePublisher<legged_controllers::ControllerJointState>(n, "state", 1));
@@ -155,13 +160,15 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 		_controller_state_pub->msg_.effort_feedback.push_back(0.0);
 	}
 
-	// thread: balance controller
-	double m_body, mu;
-	KDL::RotationalInertia I_com;
-	_balance_controller.init(m_body, I_com, mu);
-
-	// thread: virtaul spring damper controller
+	// virtaul spring damper controller
 	_virtual_spring_damper_controller.init();
+
+	// balance controller
+	double m_body = 60, mu = 0.6;	// TO DO: get this value from robot model
+	Eigen::Matrix3d I_com = Eigen::Matrix3d::Zero();
+	I_com.diagonal() << 1.5725937, 8.5015928, 9.1954911;
+	Eigen::Vector3d p_body2com(0.056, 0.0215, 0.00358);
+	_balance_controller.init(m_body, p_body2com, I_com, mu);
 	
 	return true;
 }
@@ -280,11 +287,13 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 		}
 	}
 
-	KDL::Vector p_com;
+	// State - continuosly update
+	KDL::Vector p_body, p_body_dot, w_body;
+	KDL::Rotation R_body;
 
-	// update trajectory
-	KDL::Vector p_com_d, p_com_dot_d, w_body_d, w_body;
-	KDL::Rotation R_body_d, R_body;
+	// update trajectory - get from this initial state(temporary)
+	KDL::Vector p_body_d, p_body_dot_d, w_body_d;
+	KDL::Rotation R_body_d;
 
 	// forward kinematics
 	std::array<KDL::Frame,4> frame_leg;
@@ -315,12 +324,11 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	_virtual_spring_damper_controller.getControlOutput(_F_leg);
 
 	// * v.03 - force calculation controller: balance controller by MIT cheetah (_F_leg  -  KDL::Vector)
-	// _balance_controller.setControlInput(p_com_d, p_com_dot_d, R_body_d, w_body_d,
-	// 						p_com, _p_leg, R_body, w_body);
-
-	// _balance_controller.update();
-
-	// _balance_controller.getControlOutput(_F_leg);
+	_balance_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d,
+							p_body, p_body_dot, R_body, w_body, _p_leg);
+	_balance_controller.update();
+	std::array<Eigen::Vector3d, 4> F_leg_balance;
+	_balance_controller.getControlOutput(F_leg_balance);
 
 	
 	// convert force to torque	
@@ -334,22 +342,13 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	for(int i=0; i<_n_joints; i++)
 	{
 		if (i < 3)
-		{
 			_tau_d(i) = _tau_leg[0](i);
-		}
 		else if (i < 6)
-		{
 			_tau_d(i) = _tau_leg[1](i-3);
-		}
 		else if (i < 9)
-		{
 			_tau_d(i) = _tau_leg[2](i-6);
-		}
 		else
-		{
 			_tau_d(i) = _tau_leg[3](i-9);
-		}
-
 	}
 
 	for(int i=0; i<_n_joints; i++)
@@ -378,8 +377,18 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 				_controller_state_pub->msg_.state_dot[i] = R2D*_qdot(i);
 				_controller_state_pub->msg_.q_error[i] = R2D*_q_error(i);
 				_controller_state_pub->msg_.qdot_error[i] = R2D*_qdot_error(i);
-				_controller_state_pub->msg_.effort_command[i] = _tau_d(i);
-				_controller_state_pub->msg_.effort_feedback[i] = _tau_d(i) - _controller_state_pub->msg_.effort_feedforward[i];
+				// FIXME. temporarily
+				// _controller_state_pub->msg_.effort_command[i] = _tau_d(i);
+				// _controller_state_pub->msg_.effort_feedback[i] = _tau_d(i) - _controller_state_pub->msg_.effort_feedforward[i];
+			}
+
+			for(int i=0; i<4; i++)
+			{
+				for(int j=0; j<3; j++)
+				{
+					_controller_state_pub->msg_.effort_command[i*3+j] = _F_leg[i](j);
+					_controller_state_pub->msg_.effort_feedback[i*3+j] = F_leg_balance[i](j);
+				}
 			}
 			_controller_state_pub->unlockAndPublish();
 		}
@@ -438,6 +447,13 @@ void LegController::print_state()
 		printf("\n");
 		printf("\n");
 
+		printf("*** Balance Leg Forces (unit: N) ***\n");
+		printf("X Force Input: %f, ", _F_leg[0](0));
+		printf("Y Force Input: %f, ", _F_leg[0](1));
+		printf("Z Force Input: %f, ", _F_leg[0](2));
+		printf("\n");
+		printf("\n");
+
 		printf("*** Torque Input (unit: Nm) ***\n");
 		printf("Hip AA Input: %f, ", _tau_leg[0](0));
 		printf("Hip FE Input: %f, ", _tau_leg[0](1));
@@ -468,6 +484,13 @@ void LegController::print_state()
 		printf("\n");
 
 		printf("*** Virtual Leg Forces (unit: N) ***\n");
+		printf("X Force Input: %f, ", _F_leg[1](0));
+		printf("Y Force Input: %f, ", _F_leg[1](1));
+		printf("Z Force Input: %f, ", _F_leg[1](2));
+		printf("\n");
+		printf("\n");
+
+		printf("*** Balance Leg Forces (unit: N) ***\n");
 		printf("X Force Input: %f, ", _F_leg[1](0));
 		printf("Y Force Input: %f, ", _F_leg[1](1));
 		printf("Z Force Input: %f, ", _F_leg[1](2));
@@ -510,6 +533,13 @@ void LegController::print_state()
 		printf("\n");
 		printf("\n");
 
+		printf("*** Balance Leg Forces (unit: N) ***\n");
+		printf("X Force Input: %f, ", _F_leg[2](0));
+		printf("Y Force Input: %f, ", _F_leg[2](1));
+		printf("Z Force Input: %f, ", _F_leg[2](2));
+		printf("\n");
+		printf("\n");
+
 		printf("*** Torque Input (unit: Nm) ***\n");
 		printf("Hip AA Input: %f, ", _tau_leg[2](0));
 		printf("Hip FE Input: %f, ", _tau_leg[2](1));
@@ -540,6 +570,13 @@ void LegController::print_state()
 		printf("\n");
 
 		printf("*** Virtual Leg Forces (unit: N) ***\n");
+		printf("X Force Input: %f, ", _F_leg[3](0));
+		printf("Y Force Input: %f, ", _F_leg[3](1));
+		printf("Z Force Input: %f, ", _F_leg[3](2));
+		printf("\n");
+		printf("\n");
+
+		printf("*** Balance Leg Forces (unit: N) ***\n");
 		printf("X Force Input: %f, ", _F_leg[3](0));
 		printf("Y Force Input: %f, ", _F_leg[3](1));
 		printf("Z Force Input: %f, ", _F_leg[3](2));
