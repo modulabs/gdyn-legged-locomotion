@@ -23,6 +23,7 @@
 #include <kdl/chainfksolverpos_recursive.hpp> // forward kinematics: position
 #include <kdl/chainfksolvervel_recursive.hpp> // forward kinematics: velocity
 #include <kdl/chainjnttojacsolver.hpp>        // jacobian
+// #include <kdl/chainjnttojacdotsolver.hpp>     // @ To do: jacobian derivative
 #include <kdl/chaindynparam.hpp>              // inverse dynamics
 
 
@@ -31,6 +32,7 @@
 
 #include <legged_controllers/balance_controller.h>
 #include <legged_controllers/virtaul_spring_damper_controller.h>
+#include <legged_controllers/swing_controller.h>
 
 #define PI 3.141592
 #define D2R PI/180.0
@@ -77,7 +79,9 @@ private:
 	std::array<KDL::Chain, 4>	_kdl_chain;
 	std::array<boost::scoped_ptr<KDL::ChainFkSolverPos_recursive>, 4> _fk_pos_solver;
 	std::array<boost::scoped_ptr<KDL::ChainJntToJacSolver>, 4> _jnt_to_jac_solver; 
-	std::array<boost::scoped_ptr<KDL::ChainDynParam>, 4> _id_solver;               
+	// std::array<boost::scoped_ptr<KDL::ChainJntToJacDotSolver>, 4> _jnt_to_jac_dot_solver;  @ To do
+	std::array<boost::scoped_ptr<KDL::ChainDynParam>, 4> _id_solver;
+
 
 	// cmd, state
 	realtime_tools::RealtimeBuffer<std::vector<double> > _commands_buffer;
@@ -104,7 +108,6 @@ private:
 	std::array<KDL::JntSpaceInertiaMatrix, 4> _M_leg; // joint space intertia matrix
     std::array<KDL::JntArray, 4> _C_leg;              // coriolis vector
     std::array<KDL::JntArray, 4> _G_leg;              // gravity torque vector
-
 
 	// 
 	BalanceController _balance_controller;

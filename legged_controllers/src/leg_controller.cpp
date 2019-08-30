@@ -85,6 +85,7 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 		{
 			_fk_pos_solver[i].reset(new KDL::ChainFkSolverPos_recursive(_kdl_chain[i]));
 			_jnt_to_jac_solver[i].reset(new KDL::ChainJntToJacSolver(_kdl_chain[i]));
+			// _jnt_to_jac_dot_solver[i].reset(new KDL::ChainJntToJacDotSolver(_kdl_chain[i])); @ To do
 			_id_solver[i].reset(new KDL::ChainDynParam(_kdl_chain[i],*_gravity));
 		}
 	}
@@ -306,6 +307,8 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 		_Jv_leg[i] = _J_leg[i].data.block(0,0,3,3);	
 		_p_leg[i] = frame_leg[i].p;
 		_v_leg[i] = _Jv_leg[i]*_qdot_leg[i].data;
+
+		// _jnt_to_jac_dot_solver[i]->JntToJacDot(); // @ To do: Jacobian Dot Calculation
 
 		_id_solver[i]->JntToMass(_q_leg[i], _M_leg[i]);
 		_id_solver[i]->JntToCoriolis(_q_leg[i], _qdot_leg[i], _C_leg[i]);
