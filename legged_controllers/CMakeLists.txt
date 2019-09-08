@@ -60,6 +60,7 @@ add_library(${PROJECT_NAME}
   src/balance_controller.cpp
   src/virtual_spring_damper_controller.cpp
   src/utility/math_func.cpp
+  src/mpc_controller.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
