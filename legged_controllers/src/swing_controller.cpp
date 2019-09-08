@@ -18,7 +18,7 @@ void SwingController::init()
     }
 }
 
-void SwingController::setControlInput(const std::array<KDL::Vector, 4>& p_leg, 
+void SwingController::setControlInput(const std::array<Eigen::Vector3d, 4>& p_leg, 
                                         const std::array<Eigen::Vector3d, 4>& v_leg,
                                         const std::array<Eigen::MatrixXd, 4>& Jv_leg,
                                         const std::array<KDL::JntSpaceInertiaMatrix, 4>& M_leg,

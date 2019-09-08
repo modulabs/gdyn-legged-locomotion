@@ -16,7 +16,7 @@ public:
 
     void init();
 
-    void setControlInput(const std::array<KDL::Vector, 4>& p_leg, 
+    void setControlInput(const std::array<Eigen::Vector3d, 4>& p_leg, 
                         const std::array<Eigen::Vector3d, 4>& v_leg, 
                         const std::array<KDL::JntArray, 4>& G_leg);
 
@@ -31,7 +31,7 @@ public:
     std::array<KDL::Frame, 4> _xd;
     std::array<KDL::Twist, 4> _xd_dot;
     
-    std::array<KDL::Vector, 4> _p_leg;
+    std::array<Eigen::Vector3d, 4> _p_leg;
     std::array<Eigen::Vector3d, 4> _v_leg;
     std::array<Eigen::Vector3d, 4> _F_leg;
 

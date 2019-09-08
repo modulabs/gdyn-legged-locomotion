@@ -15,6 +15,8 @@
 
 #include <urdf/model.h>
 
+#include <gazebo_msgs/LinkStates.h>
+
 // kdl
 #include <kdl/tree.hpp>
 #include <kdl/kdl.hpp>
@@ -44,14 +46,17 @@ namespace legged_controllers
 class LegController: public controller_interface::Controller<hardware_interface::EffortJointInterface>
 {
 public:
-	~LegController() { _command_sub.shutdown(); }
+	~LegController() { _commands_sub.shutdown(); _states_sub.shutdown();}
 
 	bool init(hardware_interface::EffortJointInterface* hw, ros::NodeHandle &n);
 	
 	void starting(const ros::Time& time);
 	void stopping(const ros::Time& time) { }
 
+	// subscribe
 	void setCommand(const std_msgs::Float64MultiArrayConstPtr& msg);
+	void setStates(const gazebo_msgs::LinkStatesConstPtr& msg);
+
 	bool updateGain(UpdateGain::Request& request, UpdateGain::Response& response);
 	bool updateGain();
 
@@ -88,6 +93,8 @@ private:
 	realtime_tools::RealtimeBuffer<std::vector<double> > _gains_kp_buffer;
 	realtime_tools::RealtimeBuffer<std::vector<double> > _gains_kd_buffer;
 
+	realtime_tools::RealtimeBuffer<gazebo_msgs::LinkStates> _states_buffer;
+
 	//
 	KDL::JntArray _tau_d, _tau_fric;
 	KDL::JntArray _q_d, _qdot_d, _qddot_d, _q_d_old, _qdot_d_old;
@@ -96,7 +103,7 @@ private:
 
 	//
 	std::array<KDL::JntArray,4> _q_leg, _qdot_leg;
-	std::array<KDL::Vector, 4> _p_leg;
+	std::array<Eigen::Vector3d, 4> _p_leg;
 	std::array<Eigen::Vector3d, 4> _v_leg;
 	std::array<Eigen::Vector3d, 4> _F_leg;
 	std::array<Eigen::Vector3d, 4> _F_leg_balance; 	// FIXME. temporary
@@ -117,7 +124,7 @@ private:
 	KDL::JntArray _kp, _kd;
 
 	// topic
-	ros::Subscriber _command_sub;
+	ros::Subscriber _commands_sub, _states_sub;
 	boost::scoped_ptr<
 		realtime_tools::RealtimePublisher<
 			legged_controllers::ControllerJointState> > _controller_state_pub;

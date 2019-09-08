@@ -5,20 +5,20 @@
 	<xacro:macro name="hyq_trunk" params="name">
 	
 		<!-- Floating-base Joint -->
-		<joint name="floating_base" type="fixed">
+		<!-- <joint name="floating_base" type="fixed">
 			<origin xyz="0 0 1" rpy="0 0 0"/>
 			<parent link="${name}"/>
 			<child link="trunk"/>
-		</joint>
+		</joint> -->
 
 		<!-- Footprint link -->
-		<link name="${name}">
+		<!-- <link name="${name}">
 			<visual>
 				<geometry>
 					<cylinder length="0.01" radius="0.01"/>
 				</geometry>
 			</visual>
-		</link>
+		</link> --> -->
 		
 		<!-- Trunk link -->
 		<link name="trunk">

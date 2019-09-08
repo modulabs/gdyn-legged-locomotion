@@ -32,7 +32,7 @@ void VirtualSpringDamperController::init()
   
 }
 
-void VirtualSpringDamperController::setControlInput(const std::array<KDL::Vector, 4>& p_leg, 
+void VirtualSpringDamperController::setControlInput(const std::array<Eigen::Vector3d, 4>& p_leg, 
                                                     const std::array<Eigen::Vector3d, 4>& v_leg, 
                                                     const std::array<KDL::JntArray, 4>& G_leg)
 {

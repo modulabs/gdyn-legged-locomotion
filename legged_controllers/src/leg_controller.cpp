@@ -135,11 +135,11 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 
 	// command subscriber
 	_commands_buffer.writeFromNonRT(std::vector<double>(_n_joints, 0.0));
-	_command_sub = n.subscribe<std_msgs::Float64MultiArray>("command", 1, &LegController::setCommand, this);
+	_commands_sub = n.subscribe<std_msgs::Float64MultiArray>("command", 1, &LegController::setCommand, this);
 
 	// state subscriber
-	// _states_buffer.writeFromNonRT();
-	// _states_sub = n.subscribe<std_msgs::>("")
+	_states_buffer.writeFromNonRT(gazebo_msgs::LinkStates());
+	_states_sub = n.subscribe<gazebo_msgs::LinkStates>("/gazebo_msgs/link_states", 1, &LegController::setStates, this);
 
 
 	// start realtime state publisher
@@ -198,6 +198,11 @@ void LegController::setCommand(const std_msgs::Float64MultiArrayConstPtr& msg)
 	_commands_buffer.writeFromNonRT(msg->data);
 }
 
+void LegController::setStates(const gazebo_msgs::LinkStatesConstPtr& msg)
+{
+	_states_buffer.writeFromNonRT(*msg);
+}
+
 bool LegController::updateGain(UpdateGain::Request& request, UpdateGain::Response& response)
 {
 	updateGain();
@@ -245,6 +250,8 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	std::vector<double> & commands = *_commands_buffer.readFromRT();
 	std::vector<double> & kp = *_gains_kp_buffer.readFromRT();
 	std::vector<double> & kd = *_gains_kd_buffer.readFromRT();
+	gazebo_msgs::LinkStates& link_states = *_states_buffer.readFromRT();
+
 	double dt = period.toSec();
 	double q_d_old;
 
@@ -288,13 +295,40 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 		}
 	}
 
-	// State - continuosly update
-	KDL::Vector p_body, p_body_dot, w_body;
-	KDL::Rotation R_body;
+	// State - continuosly update, subscribe from gazebo for now, TODO: get this from state observer
+	Eigen::Vector3d p_body, p_body_dot, w_body;
+	Eigen::Matrix3d R_body;
+
+	// p_body(0) = link_states.pose[1].position.x;
+	// p_body(1) = link_states.pose[1].position.y;
+	// p_body(2) = link_states.pose[1].position.z;
+
+	// Eigen::Quaterniond qu(link_states.pose[1].orientation.w, 
+	// 	link_states.pose[1].orientation.x, link_states.pose[1].orientation.y, link_states.pose[1].orientation.z);
+	// R_body = qu.toRotationMatrix();
+
+	// p_body_dot(0) = link_states.twist[1].linear.x;
+	// p_body_dot(1) = link_states.twist[1].linear.y;
+	// p_body_dot(2) = link_states.twist[1].linear.z;
+
+	// w_body(0) = link_states.twist[1].angular.x;
+	// w_body(1) = link_states.twist[1].angular.y;
+	// w_body(2) = link_states.twist[1].angular.z;
 
 	// update trajectory - get from this initial state(temporary)
-	KDL::Vector p_body_d, p_body_dot_d, w_body_d;
-	KDL::Rotation R_body_d;
+	Eigen::Vector3d p_body_d, p_body_dot_d, w_body_d;
+	Eigen::Matrix3d R_body_d;
+	static int td = 0;
+
+	if (td++ == 3000)
+	{
+		p_body_d = p_body;
+	}
+	p_body_dot_d.setZero();
+
+	R_body_d.setIdentity();
+	w_body_d.setZero();
+
 
 	// forward kinematics
 	std::array<KDL::Frame,4> frame_leg;
@@ -305,7 +339,7 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 
 		_jnt_to_jac_solver[i]->JntToJac(_q_leg[i], _J_leg[i]);
 		_Jv_leg[i] = _J_leg[i].data.block(0,0,3,3);	
-		_p_leg[i] = frame_leg[i].p;
+		_p_leg[i] = Eigen::Vector3d(frame_leg[i].p.data);
 		_v_leg[i] = _Jv_leg[i]*_qdot_leg[i].data;
 
 		// _jnt_to_jac_dot_solver[i]->JntToJacDot(); // @ To do: Jacobian Dot Calculation
@@ -326,12 +360,15 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	_virtual_spring_damper_controller.compute();
 	_virtual_spring_damper_controller.getControlOutput(_F_leg);
 
-	// * v.03 - force calculation controller: balance controller by MIT cheetah (_F_leg  -  KDL::Vector)
+	// * v.03 - force calculation controller: balance controller by MIT cheetah (_F_leg  -  Eigen::Vector3d)
 	_balance_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d,
 							p_body, p_body_dot, R_body, w_body, _p_leg);
 	_balance_controller.update();
 	_balance_controller.getControlOutput(_F_leg_balance);
-
+	if (td > 3000)
+	{
+		;
+	}
 	
 	// convert force to torque	
 	for (size_t i=0; i<4; i++)

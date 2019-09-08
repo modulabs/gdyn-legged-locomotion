@@ -22,15 +22,15 @@ public:
 
     void init(double m_body, const Eigen::Vector3d& p_com_body, const Eigen::Matrix3d& I_com, double mu);
 
-    void setControlInput(const KDL::Vector& p_body_d, 
-            const KDL::Vector& p_body_dot_d, 
-            const KDL::Rotation& R_body_d, 
-            const KDL::Vector& w_body_d,
-			const KDL::Vector& p_body,
-            const KDL::Vector& p_body_dot,
-            const KDL::Rotation& R_body,
-            const KDL::Vector w_body,
-            const std::array<KDL::Vector,4>& p_leg);
+    void setControlInput(const Eigen::Vector3d& p_body_d, 
+            const Eigen::Vector3d& p_body_dot_d, 
+            const Eigen::Matrix3d& R_body_d, 
+            const Eigen::Vector3d& w_body_d,
+			const Eigen::Vector3d& p_body, 
+            const Eigen::Vector3d& p_body_dot,
+            const Eigen::Matrix3d& R_body,
+            const Eigen::Vector3d w_body,
+            const std::array<Eigen::Vector3d,4>& p_body2leg);
 
     void getControlOutput(std::array<Eigen::Vector3d, 4>& F_leg);
 

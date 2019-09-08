@@ -8,42 +8,31 @@ void BalanceController::init(double m_body, const Eigen::Vector3d& p_body2com, c
     _mu = mu;
 }
 
-void BalanceController::setControlInput(const KDL::Vector& p_body_d, 
-            const KDL::Vector& p_body_dot_d, 
-            const KDL::Rotation& R_body_d, 
-            const KDL::Vector& w_body_d,
-			const KDL::Vector& p_body, 
-            const KDL::Vector& p_body_dot,
-            const KDL::Rotation& R_body,
-            const KDL::Vector w_body,
-            const std::array<KDL::Vector,4>& p_body2leg)
+void BalanceController::setControlInput(const Eigen::Vector3d& p_body_d, 
+            const Eigen::Vector3d& p_body_dot_d, 
+            const Eigen::Matrix3d& R_body_d, 
+            const Eigen::Vector3d& w_body_d,
+			const Eigen::Vector3d& p_body, 
+            const Eigen::Vector3d& p_body_dot,
+            const Eigen::Matrix3d& R_body,
+            const Eigen::Vector3d w_body,
+            const std::array<Eigen::Vector3d,4>& p_body2leg)
 {
     // to world coordinates
-    std::array<KDL::Vector, 4> p_world2leg;
     for (int i=0; i<4; i++)
-    {
-        p_world2leg[i] = p_body + R_body * p_body2leg[i];
-        for (int j=0; j<3; j++)
-            _p_leg[i](j) = p_world2leg[i](j);
-    }
+        _p_leg[i] = p_body + R_body * p_body2leg[i];
 
     // rotation
-    for (int i=0; i<3; i++)
-    {
-        _w_body_d(i) = w_body_d(i);
-        _w_body(i) = w_body(i);
+    _w_body_d = w_body_d;
+    _w_body = w_body;
 
-        for (int j=0; j<3; j++)
-        {
-            _R_body_d(i,j) = R_body_d(i,j);
-            _R_body(i,j) = R_body(i,j);
-        }
-    }
+    _R_body_d = R_body_d;
+    _R_body = R_body;
 
     // body to com
-    _p_com_d = Eigen::Vector3d(p_body_d.data) + _R_body_d * _p_body2com;
-    _p_com = Eigen::Vector3d(p_body.data) + _R_body * _p_body2com;
-    _p_com_dot_d = Eigen::Vector3d(p_body_dot_d.data) + skew(_w_body_d) * _R_body_d * _p_body2com;
+    _p_com_d = p_body_d + R_body_d * _p_body2com;
+    _p_com = p_body + R_body * _p_body2com;
+    _p_com_dot_d = p_body_dot_d + skew(w_body_d) * R_body_d * _p_body2com;
 }
 
 void BalanceController::getControlOutput(std::array<Eigen::Vector3d, 4>& F_leg)
@@ -71,13 +60,19 @@ void BalanceController::update()
     Eigen::Matrix<double, 16, 3, Eigen::RowMajor> C = Eigen::Matrix<double, 16, 3, Eigen::RowMajor>::Zero();
 
     // 
-
     _kp_p << 0.1, 0.1, 0.1;
     _kd_p << 0.1, 0.1, 0.1;
     _kp_w << 0.1, 0.1, 0.1;
     _kd_w << 0.1, 0.1, 0.1;
+
+    S.setZero();
+    S.diagonal() << 1, 1, 1, 1, 1, 1;
+    alpha = 1;
+    beta = 1;
+
+
     bd.head(3) = _m_body * ( _kp_p.cwiseProduct(_p_com_d - _p_com) + _kd_p.cwiseProduct(_p_com_dot_d - _p_com_dot) + Eigen::Vector3d(0,0,-GRAVITY_CONSTANT) );
-    bd.tail(3) = _I_com * ( _kp_w.cwiseProduct(logR(_R_body_d*_R_body.transpose())) + _kd_w.cwiseProduct(_w_body_d - _w_body) );
+    bd.tail(3) = _R_body*_I_com*_R_body.transpose() * ( _kp_w.cwiseProduct(logR(_R_body_d*_R_body.transpose())) + _kd_w.cwiseProduct(_w_body_d - _w_body) );
 
     for (int i=0; i<4; i++)
     {
