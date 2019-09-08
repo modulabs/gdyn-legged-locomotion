@@ -134,8 +134,10 @@ void BalanceController::update()
 	real_t yOpt[12+1];
     qp_problem.getPrimalSolution( xOpt );
 
+    _F << xOpt[0], xOpt[1], xOpt[2],
+        xOpt[3], xOpt[4], xOpt[5],
+        xOpt[6], xOpt[7], xOpt[8],
+        xOpt[9], xOpt[10], xOpt[11];
 
-
-    F_prev = F;
+    F_prev = _F;
 }
-

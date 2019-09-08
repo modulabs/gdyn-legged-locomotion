@@ -135,11 +135,11 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 
 	// command subscriber
 	_commands_buffer.writeFromNonRT(std::vector<double>(_n_joints, 0.0));
-	_commands_sub = n.subscribe<std_msgs::Float64MultiArray>("command", 1, &LegController::setCommand, this);
+	_commands_sub = n.subscribe<std_msgs::Float64MultiArray>("command", 1, &LegController::subscribeCommand, this);
 
 	// state subscriber
-	_states_buffer.writeFromNonRT(gazebo_msgs::LinkStates());
-	_states_sub = n.subscribe<gazebo_msgs::LinkStates>("/gazebo_msgs/link_states", 1, &LegController::setStates, this);
+	_trunk_state_buffer.writeFromNonRT(Trunk());
+	_link_states_sub = n.subscribe("/gazebo/link_states", 1, &LegController::subscribeTrunkState, this);
 
 
 	// start realtime state publisher
@@ -188,7 +188,7 @@ void LegController::starting(const ros::Time& time)
 	ROS_INFO("Starting Leg Controller");
 }
 
-void LegController::setCommand(const std_msgs::Float64MultiArrayConstPtr& msg)
+void LegController::subscribeCommand(const std_msgs::Float64MultiArrayConstPtr& msg)
 {
 	if(msg->data.size()!=_n_joints)
 	{ 
@@ -198,9 +198,19 @@ void LegController::setCommand(const std_msgs::Float64MultiArrayConstPtr& msg)
 	_commands_buffer.writeFromNonRT(msg->data);
 }
 
-void LegController::setStates(const gazebo_msgs::LinkStatesConstPtr& msg)
+void LegController::subscribeTrunkState(const gazebo_msgs::LinkStatesConstPtr& msg)
 {
-	_states_buffer.writeFromNonRT(*msg);
+	Trunk trunk;
+	trunk._p = Eigen::Vector3d(msg->pose[1].position.x,	msg->pose[1].position.y, msg->pose[1].position.z);
+	trunk._v = Eigen::Vector3d(msg->twist[1].linear.x, msg->twist[1].linear.y, msg->twist[1].linear.z);
+	trunk._o = Eigen::Quaterniond(Eigen::Quaterniond(msg->pose[1].orientation.w,
+														msg->pose[1].orientation.x,
+														msg->pose[1].orientation.y,
+														msg->pose[1].orientation.z));
+	trunk._w = Eigen::Vector3d(msg->twist[1].angular.x,
+		msg->twist[1].angular.y, msg->twist[1].angular.z);
+
+	_trunk_state_buffer.writeFromNonRT(trunk);
 }
 
 bool LegController::updateGain(UpdateGain::Request& request, UpdateGain::Response& response)
@@ -250,7 +260,7 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	std::vector<double> & commands = *_commands_buffer.readFromRT();
 	std::vector<double> & kp = *_gains_kp_buffer.readFromRT();
 	std::vector<double> & kd = *_gains_kd_buffer.readFromRT();
-	gazebo_msgs::LinkStates& link_states = *_states_buffer.readFromRT();
+	Trunk& trunk_state = *_trunk_state_buffer.readFromRT();
 
 	double dt = period.toSec();
 	double q_d_old;
@@ -299,21 +309,18 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	Eigen::Vector3d p_body, p_body_dot, w_body;
 	Eigen::Matrix3d R_body;
 
-	// p_body(0) = link_states.pose[1].position.x;
-	// p_body(1) = link_states.pose[1].position.y;
-	// p_body(2) = link_states.pose[1].position.z;
+	// static int td_ = 0;
+	// if (td_++ ==1000)
+	// {
+	// 	printf("position = %f, %f, %f\n", trunk_state._p[0], trunk_state._p[1], trunk_state._p[2]);
+	// 	td_ = 0;
+	// }
+	
+	p_body = trunk_state._p;
+	R_body = trunk_state._o.toRotationMatrix();
 
-	// Eigen::Quaterniond qu(link_states.pose[1].orientation.w, 
-	// 	link_states.pose[1].orientation.x, link_states.pose[1].orientation.y, link_states.pose[1].orientation.z);
-	// R_body = qu.toRotationMatrix();
-
-	// p_body_dot(0) = link_states.twist[1].linear.x;
-	// p_body_dot(1) = link_states.twist[1].linear.y;
-	// p_body_dot(2) = link_states.twist[1].linear.z;
-
-	// w_body(0) = link_states.twist[1].angular.x;
-	// w_body(1) = link_states.twist[1].angular.y;
-	// w_body(2) = link_states.twist[1].angular.z;
+	p_body_dot = trunk_state._v;
+	w_body = trunk_state._w;
 
 	// update trajectory - get from this initial state(temporary)
 	Eigen::Vector3d p_body_d, p_body_dot_d, w_body_d;

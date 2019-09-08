@@ -8,9 +8,9 @@ void VirtualSpringDamperController::init()
         _kp_leg[i].resize(3);
         _kd_leg[i].resize(3);
 
-        _kp_leg[i](0) = 3000.0;
-        _kp_leg[i](1) = 3000.0;
-        _kp_leg[i](2) = 3000.0;
+        _kp_leg[i](0) = 5000.0;
+        _kp_leg[i](1) = 5000.0;
+        _kp_leg[i](2) = 5000.0;
 
         _kd_leg[i](0) = 300.0;
         _kd_leg[i](1) = 300.0;
