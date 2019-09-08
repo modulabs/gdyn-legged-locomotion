@@ -35,6 +35,7 @@
 #include <legged_controllers/balance_controller.h>
 #include <legged_controllers/virtaul_spring_damper_controller.h>
 #include <legged_controllers/swing_controller.h>
+#include <legged_controllers/mpc_controller.h>
 
 #define PI 3.141592
 #define D2R PI/180.0
@@ -119,6 +120,7 @@ private:
 	// 
 	BalanceController _balance_controller;
 	VirtualSpringDamperController _virtual_spring_damper_controller;
+	MPCController _mpc_controller;
 
 	// gain
 	KDL::JntArray _kp, _kd;

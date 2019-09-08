@@ -365,6 +365,15 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 							p_body, p_body_dot, R_body, w_body, _p_leg);
 	_balance_controller.update();
 	_balance_controller.getControlOutput(_F_leg_balance);
+
+	// * v.04 - MPC controller: balance controller by MIT cheetah (_F_leg  -  KDL::Vector)
+	//_mpc_controller.setControlInput(p_com_d, p_com_dot_d, R_body_d, w_body_d,
+	// 						p_com, _p_leg, R_body, w_body);
+
+	_mpc_controller.update();
+
+	_mpc_controller.getControlOutput(_F_leg_balance);
+
 	if (td > 3000)
 	{
 		;
