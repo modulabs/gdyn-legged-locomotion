@@ -356,22 +356,20 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	// }
 
 	// * v.02 - force calculation controller: Set virtual spring force controller (_F_leg   -   Eigen::Vector3d)
-	_virtual_spring_damper_controller.setControlInput(_p_leg,_v_leg,_G_leg);
-	_virtual_spring_damper_controller.compute();
-	_virtual_spring_damper_controller.getControlOutput(_F_leg);
+	//_virtual_spring_damper_controller.setControlInput(_p_leg,_v_leg,_G_leg);
+	//_virtual_spring_damper_controller.compute();
+	//_virtual_spring_damper_controller.getControlOutput(_F_leg);
 
 	// * v.03 - force calculation controller: balance controller by MIT cheetah (_F_leg  -  Eigen::Vector3d)
-	_balance_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d,
-							p_body, p_body_dot, R_body, w_body, _p_leg);
-	_balance_controller.update();
-	_balance_controller.getControlOutput(_F_leg_balance);
+	//_balance_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d,
+	//						p_body, p_body_dot, R_body, w_body, _p_leg);
+	//_balance_controller.update();
+	//_balance_controller.getControlOutput(_F_leg_balance);
 
 	// * v.04 - MPC controller: balance controller by MIT cheetah (_F_leg  -  KDL::Vector)
-	//_mpc_controller.setControlInput(p_com_d, p_com_dot_d, R_body_d, w_body_d,
-	// 						p_com, _p_leg, R_body, w_body);
-
+	_mpc_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d,
+							p_body, p_body_dot, R_body, w_body, _p_leg);
 	_mpc_controller.update();
-
 	_mpc_controller.getControlOutput(_F_leg_balance);
 
 	if (td > 3000)

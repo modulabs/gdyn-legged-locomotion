@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <utility/math_func.h>
 
 // kdl
 #include <kdl/tree.hpp>
@@ -28,41 +29,45 @@
 #define K_44_gain 0.0
 
 #define Force_min 10
-#define Force_max 666
+#define Force_max 666 
 
 class MPCController
 {
 public:
     MPCController() {}
+    
+    void init(double m_body, const Eigen::Vector3d& p_com_body, const Eigen::Matrix3d& I_com, double mu);
 
-    void init(double m_body, const KDL::RotationalInertia& I_com, double mu);
-
-    void setControlInput(const KDL::Vector& p_com_d, 
-            const KDL::Vector& p_com_dot_d, 
-            const KDL::Rotation& R_body_d, 
-            const KDL::Vector& w_body_d,
-			const KDL::Vector& p_com,
-            const KDL::Vector& p_com_dot, 
-            const std::array<KDL::Vector,4>& p_leg,
-            const KDL::Rotation& R_body,
-            const KDL::Vector w_body);
+    void setControlInput(const Eigen::Vector3d& p_body_d, 
+            const Eigen::Vector3d& p_body_dot_d, 
+            const Eigen::Matrix3d& R_body_d, 
+            const Eigen::Vector3d& w_body_d,
+			const Eigen::Vector3d& p_body, 
+            const Eigen::Vector3d& p_body_dot,
+            const Eigen::Matrix3d& R_body,
+            const Eigen::Vector3d w_body,
+            const std::array<Eigen::Vector3d,4>& p_body2leg);            
 
     void getControlOutput(std::array<Eigen::Vector3d, 4>& F_leg);
 
     void update();
 
-    void skew_symmetric(KDL::Vector &v_, Eigen::MatrixXf skew_mat_);
-
 public:
-    KDL::Vector _p_com_d, _p_com_dot_d, _p_com_ddot_d, _p_com, _p_com_dot;
-    std::array<KDL::Vector, 4> _p_leg, _F_leg;
-
-    KDL::Rotation _R_body_d, _R_body; 
-
-    KDL::Vector _w_body_d, _w_body_dot_d, _w_body;
-
+    // parameter
     double _m_body;
-    KDL::RotationalInertia _I_com;
+    Eigen::Vector3d _p_body2com;
+    Eigen::Matrix3d _I_com;
 
     double _mu; // friction coefficient on ground  
+
+    // command and state
+    Eigen::Vector3d _p_com_d, _p_com_dot_d, _p_com, _p_com_dot;
+    std::array<Eigen::Vector3d, 4> _p_leg, _F_leg;
+
+    Eigen::Matrix3d _R_body_d, _R_body;   // have to change angle-axis or quaternion
+
+    Eigen::Vector3d _w_body_d, _w_body;
+
+    // optimization output
+    Eigen::Matrix<double, 12, 1> _F;
 };
