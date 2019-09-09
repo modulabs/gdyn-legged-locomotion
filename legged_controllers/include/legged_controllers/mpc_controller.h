@@ -14,7 +14,7 @@
 #include <qpOASES.hpp>
 
 #define SamplingTime 0.001
-#define MPC_Step 40
+#define MPC_Step 5
 
 #define L_00_gain 1.0
 #define L_11_gain 50.0
@@ -26,10 +26,11 @@
 #define K_11_gain 0.000001
 #define K_22_gain 0.000001
 #define K_33_gain 0.000001
-#define K_44_gain 0.0
 
 #define Force_min 10
 #define Force_max 666 
+
+#define Gravity 9.81
 
 class MPCController
 {
@@ -70,4 +71,18 @@ public:
 
     // optimization output
     Eigen::Matrix<double, 12, 1> _F;
+
+    // Define Parameter For MPC Controller
+
+    Eigen::MatrixXd _A_c, _A_d, _B_c, _B_d;
+    Eigen::MatrixXd _I3x3, _I15x15;
+    Eigen::MatrixXd _I_hat;
+    Eigen::MatrixXd _p_leg_1_skew, _p_leg_2_skew, _p_leg_3_skew, _p_leg_4_skew;
+    Eigen::MatrixXd _T15X15, _T12X12;
+    Eigen::MatrixXd _A_qp, _B_qp, _Temp; 
+    Eigen::MatrixXd _L_d,  _K_d; 
+    Eigen::MatrixXd _H_qp, _L_qp, _K_qp;   
+    Eigen::MatrixXd _g_qp, _x0, _xref;  
+    Eigen::MatrixXd _C_1leg, _C_4leg, _C_qp;
+    Eigen::MatrixXd _lbC_1leg, _lbC_4leg, _lbC_qp;      
 };

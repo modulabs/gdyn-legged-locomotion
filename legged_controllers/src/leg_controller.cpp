@@ -170,6 +170,7 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 	I_com.diagonal() << 1.5725937, 8.5015928, 9.1954911;
 	Eigen::Vector3d p_body2com(0.056, 0.0215, 0.00358);
 	_balance_controller.init(m_body, p_body2com, I_com, mu);
+	_mpc_controller.init(m_body, p_body2com, I_com, mu);
 	
 	return true;
 }
@@ -448,7 +449,7 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	}
 
     // ********* printf state *********
-	print_state();
+	//print_state();
 }
 
 void LegController::enforceJointLimits(double &command, unsigned int index)
