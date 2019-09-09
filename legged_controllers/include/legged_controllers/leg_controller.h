@@ -16,6 +16,7 @@
 #include <urdf/model.h>
 
 #include <gazebo_msgs/LinkStates.h>
+#include <geometry_msgs/PoseArray.h>
 
 // kdl
 #include <kdl/tree.hpp>
@@ -44,10 +45,18 @@
 namespace legged_controllers
 {
 
+class Trunk
+{
+public:
+	Eigen::Vector3d _p, _v;	// position, linear velocity
+	Eigen::Quaterniond _o;	// orientation
+	Eigen::Vector3d _w;		// angular velocity
+};
+
 class LegController: public controller_interface::Controller<hardware_interface::EffortJointInterface>
 {
 public:
-	~LegController() { _commands_sub.shutdown(); _states_sub.shutdown();}
+	~LegController() { _commands_sub.shutdown(); _link_states_sub.shutdown();}
 
 	bool init(hardware_interface::EffortJointInterface* hw, ros::NodeHandle &n);
 	
@@ -55,8 +64,8 @@ public:
 	void stopping(const ros::Time& time) { }
 
 	// subscribe
-	void setCommand(const std_msgs::Float64MultiArrayConstPtr& msg);
-	void setStates(const gazebo_msgs::LinkStatesConstPtr& msg);
+	void subscribeCommand(const std_msgs::Float64MultiArrayConstPtr& msg);
+	void subscribeTrunkState(const gazebo_msgs::LinkStatesConstPtr& msg);
 
 	bool updateGain(UpdateGain::Request& request, UpdateGain::Response& response);
 	bool updateGain();
@@ -94,7 +103,7 @@ private:
 	realtime_tools::RealtimeBuffer<std::vector<double> > _gains_kp_buffer;
 	realtime_tools::RealtimeBuffer<std::vector<double> > _gains_kd_buffer;
 
-	realtime_tools::RealtimeBuffer<gazebo_msgs::LinkStates> _states_buffer;
+	realtime_tools::RealtimeBuffer<Trunk> _trunk_state_buffer;
 
 	//
 	KDL::JntArray _tau_d, _tau_fric;
@@ -126,7 +135,7 @@ private:
 	KDL::JntArray _kp, _kd;
 
 	// topic
-	ros::Subscriber _commands_sub, _states_sub;
+	ros::Subscriber _commands_sub, _link_states_sub;
 	boost::scoped_ptr<
 		realtime_tools::RealtimePublisher<
 			legged_controllers::ControllerJointState> > _controller_state_pub;
