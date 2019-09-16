@@ -1,5 +1,12 @@
 #pragma once
 
+#include <fstream>
+#include <iostream>
+using namespace std;
+
+//#define Iniquality
+//#define MPC_Debugging
+
 #include <array>
 #include <utility/math_func.h>
 
@@ -20,7 +27,7 @@
 #define L_11_gain 50.0
 #define L_22_gain 1.0
 #define L_33_gain 1.0
-#define L_44_gain 0.0
+#define L_44_gain 1.0
 
 #define K_00_gain 0.000001
 #define K_11_gain 0.000001
@@ -80,9 +87,21 @@ public:
     Eigen::MatrixXd _p_leg_1_skew, _p_leg_2_skew, _p_leg_3_skew, _p_leg_4_skew;
     Eigen::MatrixXd _T15X15, _T12X12;
     Eigen::MatrixXd _A_qp, _B_qp, _Temp; 
-    Eigen::MatrixXd _L_d,  _K_d; 
+    Eigen::MatrixXd _L_d,  _K_d;
     Eigen::MatrixXd _H_qp, _L_qp, _K_qp;   
-    Eigen::MatrixXd _g_qp, _x0, _xref;  
+    Eigen::MatrixXd _g_qp, _x0, _xref, _xref_qp;  
+
+#ifdef Iniquality
+
     Eigen::MatrixXd _C_1leg, _C_4leg, _C_qp;
-    Eigen::MatrixXd _lbC_1leg, _lbC_4leg, _lbC_qp;      
+    Eigen::MatrixXd _lbC_1leg, _lbC_4leg, _lbC_qp;
+
+#else
+
+    Eigen::MatrixXd _C_1leg, _C_4leg, _C_qp;
+    Eigen::MatrixXd _lbC_1leg, _lbC_4leg, _lbC_qp;
+    Eigen::MatrixXd _ub_1leg, _ub_4leg, _ub_qp;
+    Eigen::MatrixXd _lb_1leg, _lb_4leg, _lb_qp;
+
+#endif         
 };

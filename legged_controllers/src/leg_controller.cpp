@@ -374,17 +374,48 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	//_balance_controller.update();
 	//_balance_controller.getControlOutput(_F_leg_balance);
 
-	// * v.04 - MPC controller: balance controller by MIT cheetah (_F_leg  -  KDL::Vector)
+	// * v.04 - MPC controller: balance controller by MIT cheetah (_F_leg  -  Eigen::Vector3d)
 	//_mpc_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d,
 	//						p_body, p_body_dot, R_body, w_body, _p_leg);
 	//_mpc_controller.update();
-	//_mpc_controller.getControlOutput(_F_leg_balance);
-
-	if (td > 3000)
-	{
-		;
-	}
+	//_mpc_controller.getControlOutput(_F_leg);
 	
+#ifdef MPC_Debugging
+
+	static int count=0;
+	count++;
+
+	static int count_p = 0;
+	count_p++;
+
+	if(count < 10000)
+	{
+		if(count_p>100)
+		{
+			printf("Running Vitual Spring Damper Controller\n");
+			count_p = 0;
+		}
+
+		_virtual_spring_damper_controller.setControlInput(_p_leg,_v_leg,_G_leg);
+		_virtual_spring_damper_controller.compute();
+		_virtual_spring_damper_controller.getControlOutput(_F_leg);
+	}
+	else
+	{
+		if(count_p>100)
+		{
+			printf("Running MPC Controller\n");
+			count_p = 0;
+		}
+
+		_mpc_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d,
+							p_body, p_body_dot, R_body, w_body, _p_leg);
+		_mpc_controller.update();
+		_mpc_controller.getControlOutput(_F_leg);
+	}
+
+#endif
+
 	// convert force to torque	
 	for (size_t i=0; i<4; i++)
 	{
@@ -480,26 +511,26 @@ void LegController::print_state()
 
 		printf("*********************** Left Front Leg **********************************\n\n");
 
-		printf("*** Actual Position in Joint Space (unit: deg) ***\n");
-		printf("q(1): %f, ", _q_leg[0](0) * R2D);
-		printf("q(2): %f, ", _q_leg[0](1) * R2D);
-		printf("q(3): %f, ", _q_leg[0](2) * R2D);
-		printf("\n");
-		printf("\n");
+		//printf("*** Actual Position in Joint Space (unit: deg) ***\n");
+		//printf("q(1): %f, ", _q_leg[0](0) * R2D);
+		//printf("q(2): %f, ", _q_leg[0](1) * R2D);
+		//printf("q(3): %f, ", _q_leg[0](2) * R2D);
+		//printf("\n");
+		//printf("\n");
 
-		printf("*** Actual Position in Task Space (unit: m) ***\n");
-		printf("x(1): %f, ", _p_leg[0](0) * 1);
-		printf("x(2): %f, ", _p_leg[0](1) * 1);
-		printf("x(3): %f, ", _p_leg[0](2) * 1);
-		printf("\n");
-		printf("\n");
+		//printf("*** Actual Position in Task Space (unit: m) ***\n");
+		//printf("x(1): %f, ", _p_leg[0](0) * 1);
+		//printf("x(2): %f, ", _p_leg[0](1) * 1);
+		//printf("x(3): %f, ", _p_leg[0](2) * 1);
+		//printf("\n");
+		//printf("\n");
 
-		printf("*** Virtual Leg Forces (unit: N) ***\n");
-		printf("X Force Input: %f, ", _F_leg[0](0));
-		printf("Y Force Input: %f, ", _F_leg[0](1));
-		printf("Z Force Input: %f, ", _F_leg[0](2));
-		printf("\n");
-		printf("\n");
+		//printf("*** Virtual Leg Forces (unit: N) ***\n");
+		//printf("X Force Input: %f, ", _F_leg[0](0));
+		//printf("Y Force Input: %f, ", _F_leg[0](1));
+		//printf("Z Force Input: %f, ", _F_leg[0](2));
+		//printf("\n");
+		//printf("\n");
 
 		printf("*** Balance Leg Forces (unit: N) ***\n");
 		printf("X Force Input: %f, ", _F_leg_balance[0](0));
@@ -523,26 +554,26 @@ void LegController::print_state()
 		// printf("\n");
 
 		printf("*********************** Right Front Leg **********************************\n\n");
-		printf("*** Actual Position in Joint Space (unit: deg) ***\n");
-		printf("q(1): %f, ", _q_leg[1](0) * R2D);
-		printf("q(2): %f, ", _q_leg[1](1) * R2D);
-		printf("q(3): %f, ", _q_leg[1](2) * R2D);
-		printf("\n");
-		printf("\n");
+		//printf("*** Actual Position in Joint Space (unit: deg) ***\n");
+		//printf("q(1): %f, ", _q_leg[1](0) * R2D);
+		//printf("q(2): %f, ", _q_leg[1](1) * R2D);
+		//printf("q(3): %f, ", _q_leg[1](2) * R2D);
+		//printf("\n");
+		//printf("\n");
 
-		printf("*** Actual Position in Task Space (unit: m) ***\n");
-		printf("x(1): %f, ", _p_leg[1](0) * 1);
-		printf("x(2): %f, ", _p_leg[1](1) * 1);
-		printf("x(3): %f, ", _p_leg[1](2) * 1);
-		printf("\n");
-		printf("\n");
+		//printf("*** Actual Position in Task Space (unit: m) ***\n");
+		//printf("x(1): %f, ", _p_leg[1](0) * 1);
+		//printf("x(2): %f, ", _p_leg[1](1) * 1);
+		//printf("x(3): %f, ", _p_leg[1](2) * 1);
+		//printf("\n");
+		//printf("\n");
 
-		printf("*** Virtual Leg Forces (unit: N) ***\n");
-		printf("X Force Input: %f, ", _F_leg[1](0));
-		printf("Y Force Input: %f, ", _F_leg[1](1));
-		printf("Z Force Input: %f, ", _F_leg[1](2));
-		printf("\n");
-		printf("\n");
+		//printf("*** Virtual Leg Forces (unit: N) ***\n");
+		//printf("X Force Input: %f, ", _F_leg[1](0));
+		//printf("Y Force Input: %f, ", _F_leg[1](1));
+		//printf("Z Force Input: %f, ", _F_leg[1](2));
+		//printf("\n");
+		//printf("\n");
 
 		printf("*** Balance Leg Forces (unit: N) ***\n");
 		printf("X Force Input: %f, ", _F_leg_balance[1](0));
@@ -566,26 +597,26 @@ void LegController::print_state()
 		// printf("\n");
 
 		printf("*********************** Left Hind Leg **********************************\n\n");
-		printf("*** Actual Position in Joint Space (unit: deg) ***\n");
-		printf("q(1): %f, ", _q_leg[2](0) * R2D);
-		printf("q(2): %f, ", _q_leg[2](1) * R2D);
-		printf("q(3): %f, ", _q_leg[2](2) * R2D);
-		printf("\n");
-		printf("\n");
+		//printf("*** Actual Position in Joint Space (unit: deg) ***\n");
+		//printf("q(1): %f, ", _q_leg[2](0) * R2D);
+		//printf("q(2): %f, ", _q_leg[2](1) * R2D);
+		//printf("q(3): %f, ", _q_leg[2](2) * R2D);
+		//printf("\n");
+		//printf("\n");
 
-		printf("*** Actual Position in Task Space (unit: m) ***\n");
-		printf("x(1): %f, ", _p_leg[2](0) * 1);
-		printf("x(2): %f, ", _p_leg[2](1) * 1);
-		printf("x(3): %f, ", _p_leg[2](2) * 1);
-		printf("\n");
-		printf("\n");
+		//printf("*** Actual Position in Task Space (unit: m) ***\n");
+		//printf("x(1): %f, ", _p_leg[2](0) * 1);
+		//printf("x(2): %f, ", _p_leg[2](1) * 1);
+		//printf("x(3): %f, ", _p_leg[2](2) * 1);
+		//printf("\n");
+		//printf("\n");
 
-		printf("*** Virtual Leg Forces (unit: N) ***\n");
-		printf("X Force Input: %f, ", _F_leg[2](0));
-		printf("Y Force Input: %f, ", _F_leg[2](1));
-		printf("Z Force Input: %f, ", _F_leg[2](2));
-		printf("\n");
-		printf("\n");
+		//printf("*** Virtual Leg Forces (unit: N) ***\n");
+		//printf("X Force Input: %f, ", _F_leg[2](0));
+		//printf("Y Force Input: %f, ", _F_leg[2](1));
+		//printf("Z Force Input: %f, ", _F_leg[2](2));
+		//printf("\n");
+		//printf("\n");
 
 		printf("*** Balance Leg Forces (unit: N) ***\n");
 		printf("X Force Input: %f, ", _F_leg_balance[2](0));
@@ -609,26 +640,26 @@ void LegController::print_state()
 		// printf("\n");
 
 		printf("*********************** Right Hind Leg **********************************\n\n");
-		printf("*** Actual Position in Joint Space (unit: deg) ***\n");
-		printf("q(1): %f, ", _q_leg[3](0) * R2D);
-		printf("q(2): %f, ", _q_leg[3](1) * R2D);
-		printf("q(3): %f, ", _q_leg[3](2) * R2D);
-		printf("\n");
-		printf("\n");
+		//printf("*** Actual Position in Joint Space (unit: deg) ***\n");
+		//printf("q(1): %f, ", _q_leg[3](0) * R2D);
+		//printf("q(2): %f, ", _q_leg[3](1) * R2D);
+		//printf("q(3): %f, ", _q_leg[3](2) * R2D);
+		//printf("\n");
+		//printf("\n");
 
-		printf("*** Actual Position in Task Space (unit: m) ***\n");
-		printf("x(1): %f, ", _p_leg[3](0) * 1);
-		printf("x(2): %f, ", _p_leg[3](1) * 1);
-		printf("x(3): %f, ", _p_leg[3](2) * 1);
-		printf("\n");
-		printf("\n");
+		//printf("*** Actual Position in Task Space (unit: m) ***\n");
+		//printf("x(1): %f, ", _p_leg[3](0) * 1);
+		//printf("x(2): %f, ", _p_leg[3](1) * 1);
+		//printf("x(3): %f, ", _p_leg[3](2) * 1);
+		//printf("\n");
+		//printf("\n");
 
-		printf("*** Virtual Leg Forces (unit: N) ***\n");
-		printf("X Force Input: %f, ", _F_leg[3](0));
-		printf("Y Force Input: %f, ", _F_leg[3](1));
-		printf("Z Force Input: %f, ", _F_leg[3](2));
-		printf("\n");
-		printf("\n");
+		//printf("*** Virtual Leg Forces (unit: N) ***\n");
+		//printf("X Force Input: %f, ", _F_leg[3](0));
+		//printf("Y Force Input: %f, ", _F_leg[3](1));
+		//printf("Z Force Input: %f, ", _F_leg[3](2));
+		//printf("\n");
+		//printf("\n");
 
 		printf("*** Balance Leg Forces (unit: N) ***\n");
 		printf("X Force Input: %f, ", _F_leg_balance[3](0));
