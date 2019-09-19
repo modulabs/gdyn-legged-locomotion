@@ -6,7 +6,7 @@
 	
 		<!-- Floating-base Joint -->
 		<!-- <joint name="floating_base" type="fixed">
-			<origin xyz="0 0 1" rpy="0 0 0"/>
+			<origin xyz="0 0 0.5" rpy="0 0 0"/>
 			<parent link="${name}"/>
 			<child link="trunk"/>
 		</joint> -->
@@ -18,7 +18,7 @@
 					<cylinder length="0.01" radius="0.01"/>
 				</geometry>
 			</visual>
-		</link> --> -->
+		</link> -->
 		
 		<!-- Trunk link -->
 		<link name="trunk">

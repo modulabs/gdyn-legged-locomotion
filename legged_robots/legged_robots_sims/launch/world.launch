@@ -4,7 +4,8 @@
     <arg name="debug" default="false"/>
     <arg name="gui" default="true"/>
     <arg name="headless" default="false"/>
-    <arg name="pause" default="false"/>  <!-- Start Gazebo with a blank world -->
+    <arg name="pause" default="true"/>  
+    <!-- Start Gazebo with a blank world -->
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
         <arg name="world_name" value="$(find legged_robots_sims)/worlds/simple.world"/>
         <arg name="debug" value="$(arg debug)" />
