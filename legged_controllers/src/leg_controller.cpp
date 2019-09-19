@@ -327,10 +327,13 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	Eigen::Vector3d p_body_d, p_body_dot_d, w_body_d;
 	Eigen::Matrix3d R_body_d;
 	static int td = 0;
-
+	static int controller = 0;
 	if (td++ == 3000)
 	{
 		p_body_d = p_body;
+		printf("pbody_d = %f, %f, %f, pbody= %f, %f, %f", p_body_d[0], p_body_d[1], p_body_d[2], 
+												p_body[0], p_body[1], p_body[2]);
+		controller = 1;
 	}
 	p_body_dot_d.setZero();
 
@@ -373,6 +376,31 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 							p_body, p_body_dot, R_body, w_body, _p_leg);
 	_balance_controller.update();
 	_balance_controller.getControlOutput(_F_leg_balance);
+
+	if (controller == 1)
+		_F_leg = _F_leg_balance;
+
+	static int td1 = 0;
+	if(td1++==1000)
+	{
+		td1 = 0;
+		printf("*** Balance Leg Forces 0 (unit: N) ***\n");
+		printf("X Force Input: %f, ", _F_leg_balance[0](0));
+		printf("Y Force Input: %f, ", _F_leg_balance[0](1));
+		printf("Z Force Input: %f, ", _F_leg_balance[0](2));
+		printf("*** Balance Leg Forces 1 (unit: N) ***\n");
+		printf("X Force Input: %f, ", _F_leg_balance[1](0));
+		printf("Y Force Input: %f, ", _F_leg_balance[1](1));
+		printf("Z Force Input: %f, ", _F_leg_balance[1](2));
+		printf("*** Balance Leg Forces 2 (unit: N) ***\n");
+		printf("X Force Input: %f, ", _F_leg_balance[2](0));
+		printf("Y Force Input: %f, ", _F_leg_balance[2](1));
+		printf("Z Force Input: %f, ", _F_leg_balance[2](2));
+		printf("*** Balance Leg Forces 3 (unit: N) ***\n");
+		printf("X Force Input: %f, ", _F_leg_balance[3](0));
+		printf("Y Force Input: %f, ", _F_leg_balance[3](1));
+		printf("Z Force Input: %f, ", _F_leg_balance[3](2));
+	}
 
 	// * v.04 - MPC controller: balance controller by MIT cheetah (_F_leg  -  Eigen::Vector3d)
 	//_mpc_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d,
@@ -417,6 +445,7 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 #endif
 
 	// convert force to torque	
+
 	for (size_t i=0; i<4; i++)
 	{
 		_tau_leg[i] = _Jv_leg[i].transpose() * _F_leg[i];
@@ -480,7 +509,7 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	}
 
     // ********* printf state *********
-	//print_state();
+	// print_state();
 }
 
 void LegController::enforceJointLimits(double &command, unsigned int index)
