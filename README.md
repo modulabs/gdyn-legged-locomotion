@@ -1,8 +1,10 @@
 # gdyn-legged-locomotion
 4-Legged Robot Project of 강남Dynamics Lab
 
-## Dependencies
+## Videos
+[강남Dynamics Youtube Channel](https://www.youtube.com/channel/UCZDq0-S-_fNhUzGUlN39hfg?view_as=subscriber)
 
+## Dependencies
 [spawn_robot_tools](https://bitbucket.org/theconstructcore/spawn_robot_tools/src/master/)
 Just download this package in your catkin workspace, and build.
 
