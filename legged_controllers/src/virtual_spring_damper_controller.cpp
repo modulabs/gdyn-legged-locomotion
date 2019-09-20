@@ -53,7 +53,7 @@ void VirtualSpringDamperController::compute()
         // desired foot position/velocity form hip joint
         _xd[i].p(0) = 0.0; 
         _xd[i].p(1) = 0.0; 
-        _xd[i].p(2) = -0.6;
+        _xd[i].p(2) = -0.4;
 
         _xd_dot[i].vel(0) = 0.0;
         _xd_dot[i].vel(1) = 0.0;

@@ -139,5 +139,10 @@ void BalanceController::update()
         xOpt[6], xOpt[7], xOpt[8],
         xOpt[9], xOpt[10], xOpt[11];
 
+    _F.segment(0,3) = _R_body.transpose()*_F.segment(0,3);
+    _F.segment(3,3) = _R_body.transpose()*_F.segment(3,3);
+    _F.segment(6,3) = _R_body.transpose()*_F.segment(6,3);
+    _F.segment(9,3) = _R_body.transpose()*_F.segment(9,3);
+
     F_prev = _F;
 }
