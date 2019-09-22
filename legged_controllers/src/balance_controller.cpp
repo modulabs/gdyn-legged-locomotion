@@ -51,44 +51,58 @@ void BalanceController::update()
     static Eigen::Matrix<double, 12, 1> F_prev;
     Eigen::Matrix<double, 6, 1> bd;
     Eigen::Matrix<double, 6, 6> S;
-    double alpha;
-    double beta;
+    double alpha=0.01;
+    double beta=0.01;
 
     // Transform from raw optimizaiton form to QP optimizer form
-    Eigen::Matrix<double, 14, 14, Eigen::RowMajor> H = Eigen::Matrix<double, 14, 14, Eigen::RowMajor>::Zero();
+    Eigen::Matrix<double, 12, 12, Eigen::RowMajor> H = Eigen::Matrix<double, 12, 12, Eigen::RowMajor>::Zero();
+    Eigen::Matrix<double, 12, 12> Alpha = alpha * Eigen::Matrix<double, 12,12>::Identity();
+    Eigen::Matrix<double, 12, 12> Beta = beta * Eigen::Matrix<double, 12,12>::Identity();
     Eigen::Matrix<double, 12, 1> g;
     Eigen::Matrix<double, 16, 3, Eigen::RowMajor> C = Eigen::Matrix<double, 16, 3, Eigen::RowMajor>::Zero();
-
+ 
     // 
-    _kp_p << 0.1, 0.1, 0.1;
-    _kd_p << 0.1, 0.1, 0.1;
-    _kp_w << 0.1, 0.1, 0.1;
-    _kd_w << 0.1, 0.1, 0.1;
+    _kp_p << 80, 80, 80;
+    _kd_p << 40, 40, 40;
+    _kp_w << 80, 80, 80;
+    _kd_w << 20, 20, 20;
 
     S.setZero();
     S.diagonal() << 1, 1, 1, 1, 1, 1;
-    alpha = 1;
-    beta = 1;
 
 
-    bd.head(3) = _m_body * ( _kp_p.cwiseProduct(_p_com_d - _p_com) + _kd_p.cwiseProduct(_p_com_dot_d - _p_com_dot) + Eigen::Vector3d(0,0,-GRAVITY_CONSTANT) );
+    bd.head(3) = _m_body * ( _kp_p.cwiseProduct(_p_com_d - _p_com) + _kd_p.cwiseProduct(_p_com_dot_d - _p_com_dot) + Eigen::Vector3d(0,0,GRAVITY_CONSTANT) );
     bd.tail(3) = _R_body*_I_com*_R_body.transpose() * ( _kp_w.cwiseProduct(logR(_R_body_d*_R_body.transpose())) + _kd_w.cwiseProduct(_w_body_d - _w_body) );
+    // bd.head(3) = _m_body * Eigen::Vector3d(0,0,GRAVITY_CONSTANT);
+    // bd.tail(3) = Eigen::Vector3d(0,0,0);
 
     for (int i=0; i<4; i++)
     {
-        A.block(0,3*i,3,3) = Eigen::Matrix3d::Identity();
-        A.block(3,3*i,3,3) = skew(_p_leg[i] - _p_com);
+        A.block<3,3>(0,3*i) = Eigen::Matrix3d::Identity();
+        A.block<3,3>(3,3*i) = skew(_p_leg[i] - _p_com);
     }
     
-    A.block(0,3,3,3) = Eigen::Matrix3d::Identity();
-    A.block(0,6,3,3) = Eigen::Matrix3d::Identity();
-    A.block(0,9,3,3) = Eigen::Matrix3d::Identity();
-
-    H.topLeftCorner(12, 12) = A.transpose()*S*A;
-    H(12, 12) = alpha;
-    H(13, 13) = beta;
+    H.topLeftCorner(12, 12) = A.transpose()*S*A + Alpha + Beta;
 
     g = -A.transpose()*S*bd - beta*F_prev;
+
+    static int td = 0;
+    // if (td==0)
+    // {
+    //     std::cout << "A = " << A << std::endl;
+    //     std::cout << "H = " << H << std::endl;
+    //     std::cout << "g = " << g << std::endl;
+    //     std::cout << "bd = " << bd << std::endl;
+    // }
+    if (td++==1000)
+    {
+        td = 0;
+        printf("p_com_d = %f, %f, %f", _p_com_d(0), _p_com_d(1), _p_com_d(2));
+        printf("p_com = %f, %f, %f", _p_com(0), _p_com(1), _p_com(2));
+
+        printf("bd = %f, %f, %f\n", bd(0), bd(1), bd(2));
+
+    }
 
     // Inequality constraint matrix from friction cone
     C << 1, 0, -_mu,    // lf
@@ -122,13 +136,14 @@ void BalanceController::update()
                     _mu*600, _mu*600, 600};
     real_t ubA[16] = {0.0,};
 
-    QProblem qp_problem( 12,1 );
+    QProblemB qp_problem( 12 );
 
     Options options;
 	qp_problem.setOptions( options );
 
-    int nWSR = 10;
-    qp_problem.init(H.data(), g.data(), C.data(), lb, ub, NULL, ubA, nWSR);
+    int nWSR = 1000;
+    // qp_problem.init(H.data(), g.data(), C.data(), lb, ub, NULL, ubA, nWSR);
+    qp_problem.init(H.data(), g.data(), lb, ub, nWSR);
 
 	real_t xOpt[12];
 	real_t yOpt[12+1];
@@ -139,10 +154,18 @@ void BalanceController::update()
         xOpt[6], xOpt[7], xOpt[8],
         xOpt[9], xOpt[10], xOpt[11];
 
-    _F.segment(0,3) = _R_body.transpose()*_F.segment(0,3);
-    _F.segment(3,3) = _R_body.transpose()*_F.segment(3,3);
-    _F.segment(6,3) = _R_body.transpose()*_F.segment(6,3);
-    _F.segment(9,3) = _R_body.transpose()*_F.segment(9,3);
-
     F_prev = _F;
+
+    // if (td==0)
+    // {
+    //     std::cout << "F = " << _F << std::endl;
+    // }
+    // td++;
+
+    _F.segment(0,3) = -_R_body.transpose()*_F.segment(0,3);
+    _F.segment(3,3) = -_R_body.transpose()*_F.segment(3,3);
+    _F.segment(6,3) = -_R_body.transpose()*_F.segment(6,3);
+    _F.segment(9,3) = -_R_body.transpose()*_F.segment(9,3);
+
+    
 }

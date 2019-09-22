@@ -1,2 +1,0 @@
-roslaunch legged_robots_sims spawn_hyq.launch
-roslaunch legged_robots_control hyq_control.launch

@@ -165,7 +165,7 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 	_virtual_spring_damper_controller.init();
 
 	// balance controller
-	double m_body = 60, mu = 0.6;	// TO DO: get this value from robot model
+	double m_body = 71.72, mu = 0.6;	// TO DO: get this value from robot model
 	Eigen::Matrix3d I_com = Eigen::Matrix3d::Zero();
 	I_com.diagonal() << 1.5725937, 8.5015928, 9.1954911;
 	Eigen::Vector3d p_body2com(0.056, 0.0215, 0.00358);
@@ -324,11 +324,11 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	w_body = trunk_state._w;
 
 	// update trajectory - get from this initial state(temporary)
-	Eigen::Vector3d p_body_d, p_body_dot_d, w_body_d;
+	static Eigen::Vector3d p_body_d, p_body_dot_d, w_body_d;
 	Eigen::Matrix3d R_body_d;
 	static int td = 0;
 	static int controller = 0;
-	if (td++ == 3000)
+	if (td++ == 5000)
 	{
 		p_body_d = p_body;
 		printf("pbody_d = %f, %f, %f, pbody= %f, %f, %f", p_body_d[0], p_body_d[1], p_body_d[2], 
@@ -378,29 +378,7 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	_balance_controller.getControlOutput(_F_leg_balance);
 
 	if (controller == 1)
-		_F_leg = _F_leg_balance;
-
-	static int td1 = 0;
-	if(td1++==1000)
-	{
-		td1 = 0;
-		printf("*** Balance Leg Forces 0 (unit: N) ***\n");
-		printf("X Force Input: %f, ", _F_leg_balance[0](0));
-		printf("Y Force Input: %f, ", _F_leg_balance[0](1));
-		printf("Z Force Input: %f, ", _F_leg_balance[0](2));
-		printf("*** Balance Leg Forces 1 (unit: N) ***\n");
-		printf("X Force Input: %f, ", _F_leg_balance[1](0));
-		printf("Y Force Input: %f, ", _F_leg_balance[1](1));
-		printf("Z Force Input: %f, ", _F_leg_balance[1](2));
-		printf("*** Balance Leg Forces 2 (unit: N) ***\n");
-		printf("X Force Input: %f, ", _F_leg_balance[2](0));
-		printf("Y Force Input: %f, ", _F_leg_balance[2](1));
-		printf("Z Force Input: %f, ", _F_leg_balance[2](2));
-		printf("*** Balance Leg Forces 3 (unit: N) ***\n");
-		printf("X Force Input: %f, ", _F_leg_balance[3](0));
-		printf("Y Force Input: %f, ", _F_leg_balance[3](1));
-		printf("Z Force Input: %f, ", _F_leg_balance[3](2));
-	}
+	 	_F_leg = _F_leg_balance;
 
 	// * v.04 - MPC controller: balance controller by MIT cheetah (_F_leg  -  Eigen::Vector3d)
 	//_mpc_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d,
@@ -463,6 +441,30 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 			_tau_d(i) = _tau_leg[2](i-6);
 		else
 			_tau_d(i) = _tau_leg[3](i-9);
+	}
+
+	static int td1 = 0;
+	if(td1++==1000)
+	{
+		td1 = 0;
+		printf("*** Balance Leg Forces 0 (unit: N) ***\n");
+		printf("F = %f, %f, %f\n ", _F_leg[0](0), _F_leg[0](1), _F_leg[0](2));
+		printf("F = %f, %f, %f\n ", _F_leg_balance[0](0), _F_leg_balance[0](1), _F_leg_balance[0](2));
+		printf("tau = %f, %f, %f\n", _tau_leg[0](0), _tau_leg[0](1), _tau_leg[0](2));
+		printf("*** Balance Leg Forces 1 (unit: N) ***\n");
+		printf("F = %f, %f, %f\n ", _F_leg[1](0), _F_leg[1](1), _F_leg[1](2));
+		printf("F = %f, %f, %f\n ", _F_leg_balance[1](0), _F_leg_balance[1](1), _F_leg_balance[1](2));
+
+		printf("tau = %f, %f, %f\n", _tau_leg[1](0), _tau_leg[1](1), _tau_leg[1](2));
+		printf("*** Balance Leg Forces 2 (unit: N) ***\n");
+		printf("F = %f, %f, %f\n ", _F_leg[2](0), _F_leg[2](1), _F_leg[2](2));
+		printf("F = %f, %f, %f\n ", _F_leg_balance[2](0), _F_leg_balance[2](1), _F_leg_balance[2](2));
+		printf("tau = %f, %f, %f\n", _tau_leg[2](0), _tau_leg[2](1), _tau_leg[2](2));
+
+		printf("*** Balance Leg Forces 3 (unit: N) ***\n");
+		printf("F = %f, %f, %f\n ", _F_leg[3](0), _F_leg[3](1), _F_leg[3](2));
+		printf("F = %f, %f, %f\n ", _F_leg_balance[3](0), _F_leg_balance[3](1), _F_leg_balance[3](2));
+		printf("tau = %f, %f, %f\n", _tau_leg[3](0), _tau_leg[3](1), _tau_leg[3](2));
 	}
 
 	for(int i=0; i<_n_joints; i++)

@@ -42,6 +42,7 @@
 	<xacro:property name="ycom_hipassembly" value="0.0"/>
 	<xacro:property name="zcom_hipassembly" value="0.16931"/>
 	<xacro:property name="m_hipassembly" value="2.93"/>
+	<!-- <xacro:property name="m_hipassembly" value="0.1"/> -->
 	<xacro:property name="ixx_hipassembly" value="0.05071"/>
 	<xacro:property name="iyy_hipassembly" value="0.05486"/>
 	<xacro:property name="izz_hipassembly" value="0.00571"/>
@@ -53,6 +54,7 @@
 	<xacro:property name="ycom_upperleg" value="0.02625"/>
 	<xacro:property name="zcom_upperleg" value="0.0"/>
 	<xacro:property name="m_upperleg" value="2.638"/>
+	<!-- <xacro:property name="m_upperleg" value="0.1"/> -->
 	<xacro:property name="ixx_upperleg" value="0.00368"/>
 	<xacro:property name="iyy_upperleg" value="0.02719"/>
 	<xacro:property name="izz_upperleg" value="0.02811"/>
@@ -64,6 +66,7 @@
 	<xacro:property name="ycom_lowerleg" value="0.00004"/>
 	<xacro:property name="zcom_lowerleg" value="-0.0001"/>
 	<xacro:property name="m_lowerleg" value="0.881"/>
+	<!-- <xacro:property name="m_lowerleg" value="0.1"/> -->
 	<xacro:property name="ixx_lowerleg" value="0.00047"/>
 	<xacro:property name="iyy_lowerleg" value="0.01256"/>
 	<xacro:property name="izz_lowerleg" value="0.01233"/>
