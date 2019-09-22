@@ -166,8 +166,10 @@
 				</geometry>
 				<material name="black" />
 			</visual>
-		</link>
-		
+			<gazebo>
+
+			</gazebo>
+		</link>	
 	</xacro:macro>
 
 </robot>

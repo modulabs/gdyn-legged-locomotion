@@ -21,7 +21,7 @@ using namespace std;
 #include <qpOASES.hpp>
 
 #define SamplingTime 0.001
-#define MPC_Step 10
+#define MPC_Step 5
 
 #define L_00_gain 1.0
 #define L_11_gain 50.0
@@ -34,7 +34,7 @@ using namespace std;
 #define K_22_gain 0.000001
 #define K_33_gain 0.000001
 
-#define Force_min 10
+#define Force_min 5
 #define Force_max 666 
 
 #define Gravity 9.81

@@ -112,10 +112,10 @@ void BalanceController::update()
     USING_NAMESPACE_QPOASES
 
     real_t fz_max = 600;    // 600N is total mass load of hyq, later have to get this value from actuator capacity
-    real_t lb[12] = {-_mu*600, -_mu*600, -600,
-                    -_mu*600, -_mu*600, -600,
-                    -_mu*600, -_mu*600, -600,
-                    -_mu*600, -_mu*600, -600};
+    real_t lb[12] = {-_mu*600, -_mu*600, 10,
+                    -_mu*600, -_mu*600, 10,
+                    -_mu*600, -_mu*600, 10,
+                    -_mu*600, -_mu*600, 10};
     real_t ub[12] = {_mu*600, _mu*600, 600,
                     _mu*600, _mu*600, 600,
                     _mu*600, _mu*600, 600,
@@ -138,6 +138,11 @@ void BalanceController::update()
         xOpt[3], xOpt[4], xOpt[5],
         xOpt[6], xOpt[7], xOpt[8],
         xOpt[9], xOpt[10], xOpt[11];
+
+    _F.segment(0,3) = _R_body.transpose()*_F.segment(0,3);
+    _F.segment(3,3) = _R_body.transpose()*_F.segment(3,3);
+    _F.segment(6,3) = _R_body.transpose()*_F.segment(6,3);
+    _F.segment(9,3) = _R_body.transpose()*_F.segment(9,3);
 
     F_prev = _F;
 }
