@@ -397,6 +397,8 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 		_mpc_controller.update();
 		_mpc_controller.getControlOutput(_F_leg_balance);
 		_F_leg = _F_leg_balance;
+
+		print_state();
 	}
 
 #else

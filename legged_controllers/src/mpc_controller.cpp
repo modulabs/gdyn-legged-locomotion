@@ -115,10 +115,10 @@ void MPCController::setControlInput(const Eigen::Vector3d& p_body_d,
 
 void MPCController::getControlOutput(std::array<Eigen::Vector3d, 4>& F_leg)
 {
-    F_leg[0] = _R_body.transpose()*_F.segment(0,3);
-    F_leg[1] = _R_body.transpose()*_F.segment(3,3);
-    F_leg[2] = _R_body.transpose()*_F.segment(6,3);
-    F_leg[3] = _R_body.transpose()*_F.segment(9,3);
+    F_leg[0] = -_R_body.transpose()*_F.segment(0,3);
+    F_leg[1] = -_R_body.transpose()*_F.segment(3,3);
+    F_leg[2] = -_R_body.transpose()*_F.segment(6,3);
+    F_leg[3] = -_R_body.transpose()*_F.segment(9,3);
 }
 
 void MPCController::update()
@@ -201,7 +201,7 @@ void MPCController::update()
         }   
     }
 
-    _B_qp.block<15,12>(15*1,12*0) = _B_d_d;
+    //_B_qp.block<15,12>(15*1,12*0) = _B_d_d;
 
     _L_d.block<3,3>(0,0) = L_00_gain*_I3x3;
     _L_d.block<3,3>(3,3) = L_11_gain*_I3x3;
@@ -220,7 +220,7 @@ void MPCController::update()
     for(int i=0; i<MPC_Step; i++)
         _K_qp.block<12,12>(12*i,12*i) = _K_d;        
 
-    _H_qp = _B_qp.transpose()*_L_qp*_B_qp + _K_qp;
+    _H_qp = 2*(_B_qp.transpose()*_L_qp*_B_qp + _K_qp);
     
     _x0(0) = 0.0;
     _x0(1) = 0.0;
@@ -312,7 +312,7 @@ void MPCController::update()
     for(int i=0; i<MPC_Step; i++)
         _ub_qp.block<3*4,1>(3*4*i,1*i) = _ub_4leg;   
 
-    _lb_1leg << -_mu*Force_max, -_mu*Force_max, -Force_max;
+    _lb_1leg << -_mu*Force_max, -_mu*Force_max, Force_min;
 
     for(int i=0; i<4; i++)
         _lb_4leg.block<3,1>(3*i,1*0) = _lb_1leg;     
@@ -398,6 +398,7 @@ void MPCController::update()
  #else
 
     QProblem qp_problem( 12*MPC_Step, 1 );
+    //QProblemB qp_problem( 12*MPC_Step);
 
  #endif
 
@@ -413,6 +414,7 @@ void MPCController::update()
  #elif Iniquality == 2
 
     qp_problem.init(H_qp_qpoases, g_qp_qpoases, C_qp_qpoases, lb_qp_qpoases, ub_qp_qpoases, lbC_qp_qpoases, NULL, nWSR);
+    //qp_problem.init(H_qp_qpoases, g_qp_qpoases, lb_qp_qpoases, ub_qp_qpoases,nWSR);
     
  #else
 
