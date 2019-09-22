@@ -9,8 +9,12 @@ void MPCController::init(double m_body, const Eigen::Vector3d& p_body2com, const
 
     _A_c = Eigen::MatrixXd::Zero(15,15);
     _A_d = Eigen::MatrixXd::Zero(15,15);
+
     _B_c = Eigen::MatrixXd::Zero(15,12);
+    _B_c_d = Eigen::MatrixXd::Zero(15,12);
+
     _B_d = Eigen::MatrixXd::Zero(15,12);
+    _B_d_d = Eigen::MatrixXd::Zero(15,12);
 
     _I3x3 = Eigen::MatrixXd::Identity(3,3);
     _I15x15 = Eigen::MatrixXd::Identity(15,15);
@@ -21,6 +25,11 @@ void MPCController::init(double m_body, const Eigen::Vector3d& p_body2com, const
     _p_leg_2_skew = Eigen::MatrixXd::Zero(3,3);
     _p_leg_3_skew = Eigen::MatrixXd::Zero(3,3);
     _p_leg_4_skew = Eigen::MatrixXd::Zero(3,3);
+
+    _p_leg_1_skew_d = Eigen::MatrixXd::Zero(3,3);
+    _p_leg_2_skew_d = Eigen::MatrixXd::Zero(3,3);
+    _p_leg_3_skew_d = Eigen::MatrixXd::Zero(3,3);
+    _p_leg_4_skew_d = Eigen::MatrixXd::Zero(3,3);
 
     _T15X15 = Eigen::MatrixXd::Identity(15,15);
     _T12X12 = Eigen::MatrixXd::Identity(12,12);
@@ -41,7 +50,7 @@ void MPCController::init(double m_body, const Eigen::Vector3d& p_body2com, const
     _xref = Eigen::MatrixXd::Zero(15, 1);
     _xref_qp = Eigen::MatrixXd::Zero(15*(MPC_Step+1), 1);  
 
-#ifdef Iniquality
+#if Iniquality == 1
 
     _C_1leg = Eigen::MatrixXd::Zero(6,3);
     _C_4leg = Eigen::MatrixXd::Zero(6*4,3);
@@ -51,7 +60,7 @@ void MPCController::init(double m_body, const Eigen::Vector3d& p_body2com, const
     _lbC_4leg = Eigen::MatrixXd::Zero(6*4,1);
     _lbC_qp = Eigen::MatrixXd::Zero(6*4*MPC_Step,1*MPC_Step); 
 
-#else
+#elif Iniquality == 2
 
     _C_1leg = Eigen::MatrixXd::Zero(4,3);
     _C_4leg = Eigen::MatrixXd::Zero(4*4,3);
@@ -77,6 +86,7 @@ void MPCController::setControlInput(const Eigen::Vector3d& p_body_d,
             const Eigen::Vector3d& p_body_dot_d, 
             const Eigen::Matrix3d& R_body_d, 
             const Eigen::Vector3d& w_body_d,
+            const std::array<Eigen::Vector3d,4>& p_body2leg_d,
 			const Eigen::Vector3d& p_body, 
             const Eigen::Vector3d& p_body_dot,
             const Eigen::Matrix3d& R_body,
@@ -85,7 +95,10 @@ void MPCController::setControlInput(const Eigen::Vector3d& p_body_d,
 {
     // to world coordinates
     for (int i=0; i<4; i++)
-        _p_leg[i] = p_body + R_body * p_body2leg[i];
+        _p_leg[i] = p_body + R_body*p_body2leg[i];
+
+    for (int i=0; i<4; i++)
+        _p_leg_d[i] = p_body_d + R_body_d*p_body2leg_d[i];    
 
     // rotation
     _w_body_d = w_body_d;
@@ -102,10 +115,10 @@ void MPCController::setControlInput(const Eigen::Vector3d& p_body_d,
 
 void MPCController::getControlOutput(std::array<Eigen::Vector3d, 4>& F_leg)
 {
-    F_leg[0] = _F.segment(0,3);
-    F_leg[1] = _F.segment(3,3);
-    F_leg[2] = _F.segment(6,3);
-    F_leg[3] = _F.segment(9,3);
+    F_leg[0] = _R_body.transpose()*_F.segment(0,3);
+    F_leg[1] = _R_body.transpose()*_F.segment(3,3);
+    F_leg[2] = _R_body.transpose()*_F.segment(6,3);
+    F_leg[3] = _R_body.transpose()*_F.segment(9,3);
 }
 
 void MPCController::update()
@@ -143,10 +156,26 @@ void MPCController::update()
     _B_c.block<3,3>(9,6) = (1/_m_body)*_I3x3;
     _B_c.block<3,3>(9,9) = (1/_m_body)*_I3x3;
 
+    _p_leg_1_skew_d = skew(_p_leg_d[0]);
+    _p_leg_2_skew_d = skew(_p_leg_d[1]);
+    _p_leg_3_skew_d = skew(_p_leg_d[2]);
+    _p_leg_4_skew_d = skew(_p_leg_d[3]);
+
+    _B_c_d.block<3,3>(6,0) = _I_hat.inverse()*_p_leg_1_skew_d;
+    _B_c_d.block<3,3>(6,3) = _I_hat.inverse()*_p_leg_2_skew_d;
+    _B_c_d.block<3,3>(6,6) = _I_hat.inverse()*_p_leg_3_skew_d;
+    _B_c_d.block<3,3>(6,9) = _I_hat.inverse()*_p_leg_4_skew_d;
+
+    _B_c_d.block<3,3>(9,0) = (1/_m_body)*_I3x3;
+    _B_c_d.block<3,3>(9,3) = (1/_m_body)*_I3x3;
+    _B_c_d.block<3,3>(9,6) = (1/_m_body)*_I3x3;
+    _B_c_d.block<3,3>(9,9) = (1/_m_body)*_I3x3;    
+
     // Discrete Simplified Robot Dynamics x[k+1] = A_c*x[k] + B_c*u[k]
 
     _A_d = _I15x15+_A_c*(SamplingTime*_T15X15);
     _B_d = _B_c*(SamplingTime*_T12X12);
+    _B_d_d = _B_c_d*(SamplingTime*_T12X12);
 
     // Condensed QP formulation X = Aqp*x0 + Bqp*U
 
@@ -162,7 +191,7 @@ void MPCController::update()
 
     for(int i=0; i<MPC_Step; i++)
     {
-        _Temp = _B_d;    
+        _Temp = _B_d;   
 
         for(int j=(i+1); j<=MPC_Step; j++)
         {
@@ -171,6 +200,8 @@ void MPCController::update()
             _Temp = _A_d*_Temp;
         }   
     }
+
+    _B_qp.block<15,12>(15*1,12*0) = _B_d_d;
 
     _L_d.block<3,3>(0,0) = L_00_gain*_I3x3;
     _L_d.block<3,3>(3,3) = L_11_gain*_I3x3;
@@ -232,7 +263,7 @@ void MPCController::update()
 
     // Inequality constraint
 
-#ifdef Iniquality
+#if Iniquality == 1
 
     _C_1leg <<  0,  0,   -1,
                 0,  0,    1,
@@ -260,7 +291,7 @@ void MPCController::update()
     for(int i=0; i<MPC_Step; i++)
         _lbC_qp.block<6*4,1>(6*4*i,1*i) = _lbC_4leg; 
 
-#else
+#elif Iniquality == 2
 
     _C_1leg <<  1,  0, -_mu,
                -1,  0, -_mu,
@@ -308,12 +339,12 @@ void MPCController::update()
     real_t H_qp_qpoases[(12*MPC_Step)*(12*MPC_Step)] = {0, };
     real_t g_qp_qpoases[(12*MPC_Step)*(1)] = {0, };
 
-#ifdef Iniquality
+#if Iniquality == 1
 
     real_t C_qp_qpoases[(6*4*MPC_Step)*(3*MPC_Step)] = {0, }; 
     real_t lbC_qp_qpoases[(6*4*MPC_Step)*(1*MPC_Step)] = {0, };
 
-#else
+#elif Iniquality == 2
 
     real_t C_qp_qpoases[(4*4*MPC_Step)*(3*MPC_Step)] = {0, };
     real_t ub_qp_qpoases[(3*4*MPC_Step)*(1*MPC_Step)] = {0, };
@@ -330,7 +361,7 @@ void MPCController::update()
         for(int j=0; j<(1); j++)
             g_qp_qpoases[i*(1)+j] = _g_qp(i,j);       
 
-#ifdef Iniquality
+#if Iniquality == 1
 
     for(int i=0; i<(6*4*MPC_Step); i++)
         for(int j=0; j<(3*MPC_Step); j++)
@@ -340,7 +371,7 @@ void MPCController::update()
         for(int j=0; j<(1*MPC_Step); j++)
             lbC_qp_qpoases[i*(1*MPC_Step)+j] = _lbC_qp(i,j);      
 
-#else
+#elif Iniquality == 2
 
     for(int i=0; i<(4*4*MPC_Step); i++)
         for(int j=0; j<(3*MPC_Step); j++)
@@ -360,20 +391,32 @@ void MPCController::update()
 
 #endif                  
 
-    QProblem qp_problem( 12*MPC_Step,1 );
+ #if Iniquality == 0
+
+    QProblemB qp_problem( 12*MPC_Step);
+
+ #else
+
+    QProblem qp_problem( 12*MPC_Step, 1 );
+
+ #endif
 
     Options options;
 	qp_problem.setOptions( options );
 
-    int nWSR = 10;
+    int nWSR = 1000;
 
- #ifdef Iniquality
+ #if Iniquality == 1
 
     qp_problem.init(H_qp_qpoases, g_qp_qpoases, C_qp_qpoases, NULL, NULL, lbC_qp_qpoases, NULL, nWSR);
 
- #else
+ #elif Iniquality == 2
 
     qp_problem.init(H_qp_qpoases, g_qp_qpoases, C_qp_qpoases, lb_qp_qpoases, ub_qp_qpoases, lbC_qp_qpoases, NULL, nWSR);
+    
+ #else
+
+    qp_problem.init(H_qp_qpoases, g_qp_qpoases, NULL, NULL,nWSR);
 
  #endif   
 
@@ -383,10 +426,9 @@ void MPCController::update()
     _F << UOpt[0], UOpt[1],  UOpt[2],
           UOpt[3], UOpt[4],  UOpt[5],
           UOpt[6], UOpt[7],  UOpt[8],
-          UOpt[9], UOpt[10], UOpt[11];  
+          UOpt[9], UOpt[10], UOpt[11];         
 
     // Debugging Code
-
 /*
     for(int i=0; i<(12*MPC_Step); i++)
     {
@@ -415,8 +457,8 @@ void MPCController::update()
             //writeFile <<"_A_c = "<< endl;
 		    //writeFile << _A_c << endl << endl;                         
     
-            //writeFile <<"_B_c = "<< endl;
-		    //writeFile << _B_c << endl << endl;    
+            writeFile <<"_B_c = "<< endl;
+		    writeFile << _B_c << endl << endl;    
 
             //writeFile <<"_A_d = "<< endl;
 		    //writeFile << _A_d << endl << endl; 
@@ -427,20 +469,26 @@ void MPCController::update()
             //writeFile <<"_A_d^3 = "<< endl;
 		    //writeFile << _A_d*_A_d*_A_d << endl << endl;                                  
     
-            //writeFile <<"_B_d = "<< endl;
-		    //writeFile << _B_d << endl << endl; 
+            writeFile <<"_B_d = "<< endl;
+		    writeFile << _B_d << endl << endl; 
 
-            //writeFile <<"_A_d*_B_d = "<< endl;
-		    //writeFile << _A_d*_B_d << endl << endl;             
+            writeFile <<"_A_d*_B_d = "<< endl;
+		    writeFile << _A_d*_B_d << endl << endl;             
 
-            //writeFile <<"_A_d^2*_B_d = "<< endl;
-		    //writeFile << _A_d*_A_d*_B_d << endl << endl; 
+            writeFile <<"_A_d^2*_B_d = "<< endl;
+		    writeFile << _A_d*_A_d*_B_d << endl << endl; 
 
             //writeFile <<"_A_qp = "<< endl;
 		    //writeFile << _A_qp << endl << endl;    
 
-            //writeFile <<"_B_qp = "<< endl;
-		    //writeFile << _B_qp << endl << endl;   
+            writeFile <<"_B_c_d = "<< endl;
+		    writeFile << _B_c_d << endl << endl;
+
+            writeFile <<"_B_d_d = "<< endl;
+		    writeFile << _B_d_d << endl << endl;  
+
+            writeFile <<"_B_qp = "<< endl;
+		    writeFile << _B_qp << endl << endl;   
 
             //writeFile <<"_L_d = "<< endl;
 		    //writeFile << _L_d << endl << endl;
@@ -454,20 +502,20 @@ void MPCController::update()
             //writeFile <<"_K_qp = "<< endl;
 		    //writeFile << _K_qp << endl << endl;
 
-            writeFile <<"_x0 = "<< endl;
-		    writeFile << _x0 << endl << endl; 
+            //writeFile <<"_x0 = "<< endl;
+		    //writeFile << _x0 << endl << endl; 
 
-            writeFile <<"_xref = "<< endl;
-		    writeFile << _xref << endl << endl;     
+            //writeFile <<"_xref = "<< endl;
+		    //writeFile << _xref << endl << endl;     
 
-            writeFile <<"_xref_qp = "<< endl;
-		    writeFile << _xref_qp << endl << endl;  
+            //writeFile <<"_xref_qp = "<< endl;
+		    //writeFile << _xref_qp << endl << endl;  
 
-            writeFile <<"_lbC_4leg = "<< endl;
-		    writeFile << _lbC_4leg << endl << endl;     
+            //writeFile <<"_lbC_4leg = "<< endl;
+		    //writeFile << _lbC_4leg << endl << endl;     
 
-            writeFile <<"_lbC_qp = "<< endl;
-		    writeFile << _lbC_qp << endl << endl;                               
+            //writeFile <<"_lbC_qp = "<< endl;
+		    //writeFile << _lbC_qp << endl << endl;                                           
 
 		    writeFile.close();
 	    }

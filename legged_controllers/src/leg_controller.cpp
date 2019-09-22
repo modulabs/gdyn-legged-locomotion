@@ -268,7 +268,6 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 
 	_t += dt;
 
-
 	// update gains and joint commands/states
 	for (size_t i=0; i<_n_joints; i++)
 	{
@@ -340,7 +339,6 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	R_body_d.setIdentity();
 	w_body_d.setZero();
 
-
 	// forward kinematics
 	std::array<KDL::Frame,4> frame_leg;
 
@@ -359,6 +357,49 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 		_id_solver[i]->JntToCoriolis(_q_leg[i], _qdot_leg[i], _C_leg[i]);
         _id_solver[i]->JntToGravity(_q_leg[i], _G_leg[i]);
 	}
+
+#ifdef MPC_Debugging
+
+	static int count=0;
+	count++;
+
+	static int count_p = 0;
+	count_p++;
+
+	if(count < 5000)
+	{
+		if(count_p>100)
+		{
+			printf("############ Running Vitual Spring Damper Controller\n");
+			count_p = 0;
+		}
+
+		_virtual_spring_damper_controller.setControlInput(_p_leg,_v_leg,_G_leg);
+		_virtual_spring_damper_controller.compute();
+		_virtual_spring_damper_controller.getControlOutput(_F_leg);
+
+		p_body_d = p_body;
+		p_body_dot_d = p_body_dot;
+		R_body_d = R_body;
+		w_body_d = w_body;
+		_p_leg_d = _p_leg;
+	}
+	else
+	{
+		if(count_p>100)
+		{
+			printf("############ Running MPC Controller\n");
+			count_p = 0;
+		}
+
+		_mpc_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d, _p_leg_d,
+										p_body, p_body_dot, R_body, w_body, _p_leg);
+		_mpc_controller.update();
+		_mpc_controller.getControlOutput(_F_leg_balance);
+		_F_leg = _F_leg_balance;
+	}
+
+#else
 
 	// // * v.01 - force calculation controller: Set force zero (_F_leg   -   Eigen::Vector3d)
 	// for (size_t i=0; i<4; i++)
@@ -381,48 +422,14 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	 	_F_leg = _F_leg_balance;
 
 	// * v.04 - MPC controller: balance controller by MIT cheetah (_F_leg  -  Eigen::Vector3d)
-	//_mpc_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d,
+	//_mpc_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d, _p_leg_d,
 	//						p_body, p_body_dot, R_body, w_body, _p_leg);
 	//_mpc_controller.update();
-	//_mpc_controller.getControlOutput(_F_leg);
+	//_mpc_controller.getControlOutput(_F_leg_balance);
 	
-#ifdef MPC_Debugging
-
-	static int count=0;
-	count++;
-
-	static int count_p = 0;
-	count_p++;
-
-	if(count < 10000)
-	{
-		if(count_p>100)
-		{
-			printf("Running Vitual Spring Damper Controller\n");
-			count_p = 0;
-		}
-
-		_virtual_spring_damper_controller.setControlInput(_p_leg,_v_leg,_G_leg);
-		_virtual_spring_damper_controller.compute();
-		_virtual_spring_damper_controller.getControlOutput(_F_leg);
-	}
-	else
-	{
-		if(count_p>100)
-		{
-			printf("Running MPC Controller\n");
-			count_p = 0;
-		}
-
-		_mpc_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d,
-							p_body, p_body_dot, R_body, w_body, _p_leg);
-		_mpc_controller.update();
-		_mpc_controller.getControlOutput(_F_leg);
-	}
+	// convert force to torque	
 
 #endif
-
-	// convert force to torque	
 
 	for (size_t i=0; i<4; i++)
 	{
@@ -511,7 +518,7 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	}
 
     // ********* printf state *********
-	// print_state();
+	//print_state();
 }
 
 void LegController::enforceJointLimits(double &command, unsigned int index)
@@ -533,7 +540,7 @@ void LegController::enforceJointLimits(double &command, unsigned int index)
 void LegController::print_state()
 {
 	static int count = 0;
-	if (count > 990)
+	if (count > 100)
 	{
 		printf("*********************************************************\n\n");
 		printf("*** Simulation Time (unit: sec)  ***\n");
@@ -564,9 +571,9 @@ void LegController::print_state()
 		//printf("\n");
 
 		printf("*** Balance Leg Forces (unit: N) ***\n");
-		printf("X Force Input: %f, ", _F_leg_balance[0](0));
-		printf("Y Force Input: %f, ", _F_leg_balance[0](1));
-		printf("Z Force Input: %f, ", _F_leg_balance[0](2));
+		printf("X Force Input: %f, ", _F_leg[0](0));
+		printf("Y Force Input: %f, ", _F_leg[0](1));
+		printf("Z Force Input: %f, ", _F_leg[0](2));
 		printf("\n");
 		printf("\n");
 
@@ -607,9 +614,9 @@ void LegController::print_state()
 		//printf("\n");
 
 		printf("*** Balance Leg Forces (unit: N) ***\n");
-		printf("X Force Input: %f, ", _F_leg_balance[1](0));
-		printf("Y Force Input: %f, ", _F_leg_balance[1](1));
-		printf("Z Force Input: %f, ", _F_leg_balance[1](2));
+		printf("X Force Input: %f, ", _F_leg[1](0));
+		printf("Y Force Input: %f, ", _F_leg[1](1));
+		printf("Z Force Input: %f, ", _F_leg[1](2));
 		printf("\n");
 		printf("\n");
 
@@ -650,9 +657,9 @@ void LegController::print_state()
 		//printf("\n");
 
 		printf("*** Balance Leg Forces (unit: N) ***\n");
-		printf("X Force Input: %f, ", _F_leg_balance[2](0));
-		printf("Y Force Input: %f, ", _F_leg_balance[2](1));
-		printf("Z Force Input: %f, ", _F_leg_balance[2](2));
+		printf("X Force Input: %f, ", _F_leg[2](0));
+		printf("Y Force Input: %f, ", _F_leg[2](1));
+		printf("Z Force Input: %f, ", _F_leg[2](2));
 		printf("\n");
 		printf("\n");
 
@@ -693,9 +700,9 @@ void LegController::print_state()
 		//printf("\n");
 
 		printf("*** Balance Leg Forces (unit: N) ***\n");
-		printf("X Force Input: %f, ", _F_leg_balance[3](0));
-		printf("Y Force Input: %f, ", _F_leg_balance[3](1));
-		printf("Z Force Input: %f, ", _F_leg_balance[3](2));
+		printf("X Force Input: %f, ", _F_leg[3](0));
+		printf("Y Force Input: %f, ", _F_leg[3](1));
+		printf("Z Force Input: %f, ", _F_leg[3](2));
 		printf("\n");
 		printf("\n");
 
