@@ -268,7 +268,6 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 
 	_t += dt;
 
-
 	// update gains and joint commands/states
 	for (size_t i=0; i<_n_joints; i++)
 	{
@@ -337,7 +336,6 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	R_body_d.setIdentity();
 	w_body_d.setZero();
 
-
 	// forward kinematics
 	std::array<KDL::Frame,4> frame_leg;
 
@@ -366,7 +364,7 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	// * v.02 - force calculation controller: Set virtual spring force controller (_F_leg   -   Eigen::Vector3d)
 	_virtual_spring_damper_controller.setControlInput(_p_leg,_v_leg,_G_leg);
 	_virtual_spring_damper_controller.compute();
-	_virtual_spring_damper_controller.getControlOutput(_F_leg);
+	_virtual_spring_damper_controller.getControlOutput(_F_leg_balance);
 
 	// * v.03 - force calculation controller: balance controller by MIT cheetah (_F_leg  -  Eigen::Vector3d)
 	//_balance_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d,
@@ -375,10 +373,10 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	//_balance_controller.getControlOutput(_F_leg_balance);
 
 	// * v.04 - MPC controller: balance controller by MIT cheetah (_F_leg  -  Eigen::Vector3d)
-	//_mpc_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d,
+	//_mpc_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d, _p_leg_d,
 	//						p_body, p_body_dot, R_body, w_body, _p_leg);
 	//_mpc_controller.update();
-	//_mpc_controller.getControlOutput(_F_leg);
+	//_mpc_controller.getControlOutput(_F_leg_balance);
 	
 #ifdef MPC_Debugging
 
@@ -388,30 +386,36 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	static int count_p = 0;
 	count_p++;
 
-	if(count < 10000)
+	if(count < 5000)
 	{
 		if(count_p>100)
 		{
-			printf("Running Vitual Spring Damper Controller\n");
+			printf("############ Running Vitual Spring Damper Controller\n");
 			count_p = 0;
 		}
 
 		_virtual_spring_damper_controller.setControlInput(_p_leg,_v_leg,_G_leg);
 		_virtual_spring_damper_controller.compute();
-		_virtual_spring_damper_controller.getControlOutput(_F_leg);
+		_virtual_spring_damper_controller.getControlOutput(_F_leg_balance);
+
+		p_body_d = p_body;
+		p_body_dot_d = p_body_dot;
+		R_body_d = R_body;
+		w_body_d = w_body;
+		_p_leg_d = _p_leg;
 	}
 	else
 	{
 		if(count_p>100)
 		{
-			printf("Running MPC Controller\n");
+			printf("############ Running MPC Controller\n");
 			count_p = 0;
 		}
 
-		_mpc_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d,
-							p_body, p_body_dot, R_body, w_body, _p_leg);
+		_mpc_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d, _p_leg_d,
+										p_body, p_body_dot, R_body, w_body, _p_leg);
 		_mpc_controller.update();
-		_mpc_controller.getControlOutput(_F_leg);
+		_mpc_controller.getControlOutput(_F_leg_balance);
 	}
 
 #endif
@@ -419,7 +423,7 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	// convert force to torque	
 	for (size_t i=0; i<4; i++)
 	{
-		_tau_leg[i] = _Jv_leg[i].transpose() * _F_leg[i];
+		_tau_leg[i] = _Jv_leg[i].transpose() * _F_leg_balance[i];
 		//_tau_leg[i] << 0, 0, 0;
 	}
 
@@ -480,7 +484,7 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	}
 
     // ********* printf state *********
-	//print_state();
+	print_state();
 }
 
 void LegController::enforceJointLimits(double &command, unsigned int index)
@@ -502,7 +506,7 @@ void LegController::enforceJointLimits(double &command, unsigned int index)
 void LegController::print_state()
 {
 	static int count = 0;
-	if (count > 990)
+	if (count > 100)
 	{
 		printf("*********************************************************\n\n");
 		printf("*** Simulation Time (unit: sec)  ***\n");

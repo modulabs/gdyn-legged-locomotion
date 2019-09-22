@@ -4,7 +4,7 @@
 #include <iostream>
 using namespace std;
 
-//#define Iniquality
+#define Iniquality 0 // 0 : None Constraints / 1 : method 1 / 2 : method 2
 //#define MPC_Debugging
 
 #include <array>
@@ -21,7 +21,7 @@ using namespace std;
 #include <qpOASES.hpp>
 
 #define SamplingTime 0.001
-#define MPC_Step 5
+#define MPC_Step 10
 
 #define L_00_gain 1.0
 #define L_11_gain 50.0
@@ -50,6 +50,7 @@ public:
             const Eigen::Vector3d& p_body_dot_d, 
             const Eigen::Matrix3d& R_body_d, 
             const Eigen::Vector3d& w_body_d,
+            const std::array<Eigen::Vector3d,4>& p_body2leg_d,
 			const Eigen::Vector3d& p_body, 
             const Eigen::Vector3d& p_body_dot,
             const Eigen::Matrix3d& R_body,
@@ -70,7 +71,7 @@ public:
 
     // command and state
     Eigen::Vector3d _p_com_d, _p_com_dot_d, _p_com, _p_com_dot;
-    std::array<Eigen::Vector3d, 4> _p_leg, _F_leg;
+    std::array<Eigen::Vector3d, 4> _p_leg, _p_leg_d, _F_leg;
 
     Eigen::Matrix3d _R_body_d, _R_body;   // have to change angle-axis or quaternion
 
@@ -81,22 +82,23 @@ public:
 
     // Define Parameter For MPC Controller
 
-    Eigen::MatrixXd _A_c, _A_d, _B_c, _B_d;
+    Eigen::MatrixXd _A_c, _A_d, _B_c, _B_c_d, _B_d, _B_d_d;
     Eigen::MatrixXd _I3x3, _I15x15;
     Eigen::MatrixXd _I_hat;
     Eigen::MatrixXd _p_leg_1_skew, _p_leg_2_skew, _p_leg_3_skew, _p_leg_4_skew;
+    Eigen::MatrixXd _p_leg_1_skew_d, _p_leg_2_skew_d, _p_leg_3_skew_d, _p_leg_4_skew_d;
     Eigen::MatrixXd _T15X15, _T12X12;
     Eigen::MatrixXd _A_qp, _B_qp, _Temp; 
     Eigen::MatrixXd _L_d,  _K_d;
     Eigen::MatrixXd _H_qp, _L_qp, _K_qp;   
     Eigen::MatrixXd _g_qp, _x0, _xref, _xref_qp;  
 
-#ifdef Iniquality
+#if Iniquality == 1
 
     Eigen::MatrixXd _C_1leg, _C_4leg, _C_qp;
     Eigen::MatrixXd _lbC_1leg, _lbC_4leg, _lbC_qp;
 
-#else
+#elif Iniquality == 2
 
     Eigen::MatrixXd _C_1leg, _C_4leg, _C_qp;
     Eigen::MatrixXd _lbC_1leg, _lbC_4leg, _lbC_qp;

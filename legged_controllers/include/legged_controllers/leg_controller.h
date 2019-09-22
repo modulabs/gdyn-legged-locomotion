@@ -113,7 +113,7 @@ private:
 
 	//
 	std::array<KDL::JntArray,4> _q_leg, _qdot_leg;
-	std::array<Eigen::Vector3d, 4> _p_leg;
+	std::array<Eigen::Vector3d, 4> _p_leg, _p_leg_d;
 	std::array<Eigen::Vector3d, 4> _v_leg;
 	std::array<Eigen::Vector3d, 4> _F_leg;
 	std::array<Eigen::Vector3d, 4> _F_leg_balance; 	// FIXME. temporary
