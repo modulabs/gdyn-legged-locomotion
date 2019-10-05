@@ -51,30 +51,28 @@ void BalanceController::update()
     static Eigen::Matrix<double, 12, 1> F_prev;
     Eigen::Matrix<double, 6, 1> bd;
     Eigen::Matrix<double, 6, 6> S;
-    double alpha=0.01;
-    double beta=0.01;
+    double alpha=0.1;
+    double beta=0.1;
 
     // Transform from raw optimizaiton form to QP optimizer form
     Eigen::Matrix<double, 12, 12, Eigen::RowMajor> H = Eigen::Matrix<double, 12, 12, Eigen::RowMajor>::Zero();
     Eigen::Matrix<double, 12, 12> Alpha = alpha * Eigen::Matrix<double, 12,12>::Identity();
     Eigen::Matrix<double, 12, 12> Beta = beta * Eigen::Matrix<double, 12,12>::Identity();
     Eigen::Matrix<double, 12, 1> g;
-    Eigen::Matrix<double, 16, 3, Eigen::RowMajor> C = Eigen::Matrix<double, 16, 3, Eigen::RowMajor>::Zero();
+    Eigen::Matrix<double, 16, 12, Eigen::RowMajor> C = Eigen::Matrix<double, 16, 12, Eigen::RowMajor>::Zero();
  
     // 
-    _kp_p << 80, 80, 80;
-    _kd_p << 40, 40, 40;
-    _kp_w << 80, 80, 80;
+    _kp_p << 50, 50, 100;
+    _kd_p << 10, 10, 20;
+    _kp_w << 100, 100, 100;
     _kd_w << 20, 20, 20;
 
     S.setZero();
-    S.diagonal() << 1, 1, 1, 1, 1, 1;
+    S.diagonal() << 1, 1, 1, 2, 2, 2;
 
 
     bd.head(3) = _m_body * ( _kp_p.cwiseProduct(_p_com_d - _p_com) + _kd_p.cwiseProduct(_p_com_dot_d - _p_com_dot) + Eigen::Vector3d(0,0,GRAVITY_CONSTANT) );
     bd.tail(3) = _R_body*_I_com*_R_body.transpose() * ( _kp_w.cwiseProduct(logR(_R_body_d*_R_body.transpose())) + _kd_w.cwiseProduct(_w_body_d - _w_body) );
-    // bd.head(3) = _m_body * Eigen::Vector3d(0,0,GRAVITY_CONSTANT);
-    // bd.tail(3) = Eigen::Vector3d(0,0,0);
 
     for (int i=0; i<4; i++)
     {
@@ -105,45 +103,37 @@ void BalanceController::update()
     }
 
     // Inequality constraint matrix from friction cone
-    C << 1, 0, -_mu,    // lf
-        -1, 0, -_mu,
-        0, 1, -_mu,
-        0, -1, -_mu,
-        1, 0, -_mu,     // rf
-        -1, 0, -_mu,
-        0, 1, -_mu,
-        0, -1, -_mu,
-        1, 0, -_mu,     // lh
-        -1, 0, -_mu,
-        0, 1, -_mu,
-        0, -1, -_mu,
-        1, 0, -_mu,     // rh
-        -1, 0, -_mu,
-        0, 1, -_mu,
-        0, -1, -_mu;
+    for (int i=0; i<4; i++)
+    {
+        C.block<4,3>(4*i,3*i) << 1, 0, -_mu,    
+                                -1, 0, -_mu,
+                                 0, 1, -_mu,
+                                0, -1, -_mu;
+    }
 
     // Optimization
     USING_NAMESPACE_QPOASES
 
-    real_t fz_max = 600;    // 600N is total mass load of hyq, later have to get this value from actuator capacity
-    real_t lb[12] = {-_mu*600, -_mu*600, 10,
-                    -_mu*600, -_mu*600, 10,
-                    -_mu*600, -_mu*600, 10,
-                    -_mu*600, -_mu*600, 10};
-    real_t ub[12] = {_mu*600, _mu*600, 600,
-                    _mu*600, _mu*600, 600,
-                    _mu*600, _mu*600, 600,
-                    _mu*600, _mu*600, 600};
+    real_t fz_max = 400;    // 600N is total mass load of hyq, later have to get this value from actuator capacity
+    real_t lb[12] = {-_mu*fz_max, -_mu*fz_max, 10,
+                    -_mu*fz_max, -_mu*fz_max, 10,
+                    -_mu*fz_max, -_mu*fz_max, 10,
+                    -_mu*fz_max, -_mu*fz_max, 10};
+    real_t ub[12] = {_mu*fz_max, _mu*fz_max, fz_max,
+                    _mu*fz_max, _mu*fz_max, fz_max,
+                    _mu*fz_max, _mu*fz_max,fz_max,
+                    _mu*fz_max, _mu*fz_max, fz_max};
     real_t ubA[16] = {0.0,};
 
-    QProblemB qp_problem( 12 );
+    QProblem qp_problem( 12, 16);
+    // QProblemB qp_problem( 12 );
 
     Options options;
 	qp_problem.setOptions( options );
 
     int nWSR = 1000;
-    // qp_problem.init(H.data(), g.data(), C.data(), lb, ub, NULL, ubA, nWSR);
-    qp_problem.init(H.data(), g.data(), lb, ub, nWSR);
+    qp_problem.init(H.data(), g.data(), C.data(), lb, ub, NULL, ubA, nWSR);
+    // qp_problem.init(H.data(), g.data(), lb, ub, nWSR);
 
 	real_t xOpt[12];
 	real_t yOpt[12+1];
