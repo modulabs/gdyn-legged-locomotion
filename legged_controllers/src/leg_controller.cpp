@@ -165,7 +165,8 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 	_virtual_spring_damper_controller.init();
 
 	// balance controller
-	double m_body = 71.72, mu = 0.6;	// TO DO: get this value from robot model
+	double m_body = 83.282; //60.96, 71.72, 
+	double mu = 0.6;	// TO DO: get this value from robot model
 	Eigen::Matrix3d I_com = Eigen::Matrix3d::Zero();
 	I_com.diagonal() << 1.5725937, 8.5015928, 9.1954911;
 	Eigen::Vector3d p_body2com(0.056, 0.0215, 0.00358);
