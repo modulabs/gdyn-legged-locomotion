@@ -14,7 +14,6 @@ void MPCController::init(double m_body, const Eigen::Vector3d& p_body2com, const
     _B_c_d = Eigen::MatrixXd::Zero(15,12);
 
     _B_d = Eigen::MatrixXd::Zero(15,12);
-    _B_d_d = Eigen::MatrixXd::Zero(15,12);
 
     _I3x3 = Eigen::MatrixXd::Identity(3,3);
     _I15x15 = Eigen::MatrixXd::Identity(15,15);
@@ -50,36 +49,21 @@ void MPCController::init(double m_body, const Eigen::Vector3d& p_body2com, const
     _xref = Eigen::MatrixXd::Zero(15, 1);
     _xref_qp = Eigen::MatrixXd::Zero(15*(MPC_Step+1), 1);  
 
-#if Iniquality == 1
-
-    _C_1leg = Eigen::MatrixXd::Zero(6,3);
-    _C_4leg = Eigen::MatrixXd::Zero(6*4,3);
-    _C_qp = Eigen::MatrixXd::Zero(6*4*MPC_Step,3*MPC_Step);
-
-    _lbC_1leg = Eigen::MatrixXd::Zero(6,1);
-    _lbC_4leg = Eigen::MatrixXd::Zero(6*4,1);
-    _lbC_qp = Eigen::MatrixXd::Zero(6*4*MPC_Step,1*MPC_Step); 
-
-#elif Iniquality == 2
-
     _C_1leg = Eigen::MatrixXd::Zero(4,3);
     _C_4leg = Eigen::MatrixXd::Zero(4*4,3);
     _C_qp = Eigen::MatrixXd::Zero(4*4*MPC_Step,3*MPC_Step); 
 
+    _lbC_1leg = Eigen::MatrixXd::Zero(4,1);
+    _lbC_4leg = Eigen::MatrixXd::Zero(4*4,1);
+    _lbC_qp = Eigen::MatrixXd::Zero(4*4*MPC_Step,1);
+
     _ub_1leg = Eigen::MatrixXd::Zero(3,1);
     _ub_4leg = Eigen::MatrixXd::Zero(3*4,1);
-    _ub_qp = Eigen::MatrixXd::Zero(3*4*MPC_Step,1*MPC_Step);
+    _ub_qp = Eigen::MatrixXd::Zero(3*4*MPC_Step,1);
 
     _lb_1leg = Eigen::MatrixXd::Zero(3,1);
     _lb_4leg = Eigen::MatrixXd::Zero(3*4,1);
-    _lb_qp = Eigen::MatrixXd::Zero(3*4*MPC_Step,1*MPC_Step);
-
-    _lbC_1leg = Eigen::MatrixXd::Zero(4,1);
-    _lbC_4leg = Eigen::MatrixXd::Zero(4*4,1);
-    _lbC_qp = Eigen::MatrixXd::Zero(4*4*MPC_Step,1*MPC_Step);
-
-#endif    
-                      
+    _lb_qp = Eigen::MatrixXd::Zero(3*4*MPC_Step,1);               
 }
 
 void MPCController::setControlInput(const Eigen::Vector3d& p_body_d, 
@@ -175,7 +159,6 @@ void MPCController::update()
 
     _A_d = _I15x15+_A_c*(SamplingTime*_T15X15);
     _B_d = _B_c*(SamplingTime*_T12X12);
-    _B_d_d = _B_c_d*(SamplingTime*_T12X12);
 
     // Condensed QP formulation X = Aqp*x0 + Bqp*U
 
@@ -201,10 +184,15 @@ void MPCController::update()
         }   
     }
 
-    //_B_qp.block<15,12>(15*1,12*0) = _B_d_d;
-
     _L_d.block<3,3>(0,0) = L_00_gain*_I3x3;
-    _L_d.block<3,3>(3,3) = L_11_gain*_I3x3;
+
+    Eigen::Matrix3d L_11_gain_xyz;
+    L_11_gain_xyz = _I3x3;
+    L_11_gain_xyz(0,0) = L_11_gain_x*_I3x3(0,0);
+    L_11_gain_xyz(1,1) = L_11_gain_y*_I3x3(1,1);
+    L_11_gain_xyz(2,2) = L_11_gain_z*_I3x3(2,2);
+
+    _L_d.block<3,3>(3,3) = L_11_gain_xyz;
     _L_d.block<3,3>(6,6) = L_22_gain*_I3x3;
     _L_d.block<3,3>(9,9) = L_33_gain*_I3x3;
     _L_d.block<3,3>(12,12) = L_44_gain*_I3x3;
@@ -256,47 +244,34 @@ void MPCController::update()
 
     for(int i=0; i<(MPC_Step+1); i++)
     {
-        _xref_qp.block<15,1>(15*i,0) =  _xref;
+        _xref_qp.block<15,1>(15*i,0) = _xref;
     }
 
     _g_qp = 2*_B_qp.transpose()*_L_qp*(_A_qp*_x0 - _xref_qp);
 
     // Inequality constraint
 
-#if Iniquality == 1
+    Vector3d e1(_mu/sqrt(2*_mu*_mu+1),_mu/sqrt(2*_mu*_mu+1),1/sqrt(2*_mu*_mu+1));
+    Vector3d e2(-_mu/sqrt(2*_mu*_mu+1),_mu/sqrt(2*_mu*_mu+1),1/sqrt(2*_mu*_mu+1));
+    Vector3d e3(-_mu/sqrt(2*_mu*_mu+1),-_mu/sqrt(2*_mu*_mu+1),1/sqrt(2*_mu*_mu+1));
+    Vector3d e4(_mu/sqrt(2*_mu*_mu+1),-_mu/sqrt(2*_mu*_mu+1),1/sqrt(2*_mu*_mu+1));
+    
+    Vector3d e1Xe2 = e1.cross(e2);
+    Vector3d e2Xe3 = e2.cross(e3);
+    Vector3d e3Xe4 = e3.cross(e4);
+    Vector3d e4Xe1 = e4.cross(e1);
 
-    _C_1leg <<  0,  0,   -1,
-                0,  0,    1,
-               -1,  0, -_mu,
-                1,  0, -_mu,
-                0, -1, -_mu,
-                0,  1, -_mu;
+    // method 1 
+    //_C_1leg << e1(0), e1(1), e1(2),
+    //           e2(0), e2(1), e2(2),
+    //           e3(0), e3(1), e3(2),
+    //           e4(0), e4(1), e4(2);  
 
-    for(int i=0; i<4; i++)
-        _C_4leg.block<6,3>(6*i,0) = _C_1leg;  
-
-    for(int i=0; i<MPC_Step; i++)
-        _C_qp.block<6*4,3>(6*4*i,3*i) = _C_4leg;
-
-    _lbC_1leg << -Force_min,
-                  Force_max,
-                          0,
-                          0,
-                          0,
-                          0;
-
-    for(int i=0; i<4; i++)
-        _lbC_4leg.block<6,1>(6*i,1*0) = _lbC_1leg;     
-
-    for(int i=0; i<MPC_Step; i++)
-        _lbC_qp.block<6*4,1>(6*4*i,1*i) = _lbC_4leg; 
-
-#elif Iniquality == 2
-
-    _C_1leg <<  1,  0, -_mu,
-               -1,  0, -_mu,
-                0,  1, -_mu,
-                0, -1, -_mu;
+    // method 2
+    _C_1leg << e1Xe2(0), e1Xe2(1), e1Xe2(2),
+               e2Xe3(0), e2Xe3(1), e2Xe3(2),
+               e3Xe4(0), e3Xe4(1), e3Xe4(2),
+               e4Xe1(0), e4Xe1(1), e4Xe1(2);           
 
     for(int i=0; i<4; i++)
         _C_4leg.block<4,3>(4*i,0) = _C_1leg;  
@@ -304,34 +279,32 @@ void MPCController::update()
     for(int i=0; i<MPC_Step; i++)
         _C_qp.block<4*4,3>(4*4*i,3*i) = _C_4leg;
 
-    _ub_1leg << _mu*Force_max, _mu*Force_max, Force_max;
-
-    for(int i=0; i<4; i++)
-        _ub_4leg.block<3,1>(3*i,1*0) = _ub_1leg;     
-
-    for(int i=0; i<MPC_Step; i++)
-        _ub_qp.block<3*4,1>(3*4*i,1*i) = _ub_4leg;   
-
-    _lb_1leg << -_mu*Force_max, -_mu*Force_max, Force_min;
-
-    for(int i=0; i<4; i++)
-        _lb_4leg.block<3,1>(3*i,1*0) = _lb_1leg;     
-
-    for(int i=0; i<MPC_Step; i++)
-        _lb_qp.block<3*4,1>(3*4*i,1*i) = _lb_4leg;               
-
     _lbC_1leg << 0,
                  0,
                  0,
                  0;
 
     for(int i=0; i<4; i++)
-        _lbC_4leg.block<4,1>(4*i,1*0) = _lbC_1leg;     
+        _lbC_4leg.block<4,1>(4*i,0) = _lbC_1leg;     
 
     for(int i=0; i<MPC_Step; i++)
-        _lbC_qp.block<4*4,1>(4*4*i,1*i) = _lbC_4leg; 
+        _lbC_qp.block<4*4,1>(4*4*i,0) = _lbC_4leg; 
 
-#endif
+    _ub_1leg << _mu*Force_max, _mu*Force_max, Force_max;
+
+    for(int i=0; i<4; i++)
+        _ub_4leg.block<3,1>(3*i,0) = _ub_1leg;     
+
+    for(int i=0; i<MPC_Step; i++)
+        _ub_qp.block<3*4,1>(3*4*i,0) = _ub_4leg;   
+
+    _lb_1leg << -_mu*Force_max, -_mu*Force_max, Force_min;
+
+    for(int i=0; i<4; i++)
+        _lb_4leg.block<3,1>(3*i,0) = _lb_1leg;     
+
+    for(int i=0; i<MPC_Step; i++)
+        _lb_qp.block<3*4,1>(3*4*i,0) = _lb_4leg;    
 
     // Optimization(QP Solver)
 
@@ -339,19 +312,10 @@ void MPCController::update()
     real_t H_qp_qpoases[(12*MPC_Step)*(12*MPC_Step)] = {0, };
     real_t g_qp_qpoases[(12*MPC_Step)*(1)] = {0, };
 
-#if Iniquality == 1
-
-    real_t C_qp_qpoases[(6*4*MPC_Step)*(3*MPC_Step)] = {0, }; 
-    real_t lbC_qp_qpoases[(6*4*MPC_Step)*(1*MPC_Step)] = {0, };
-
-#elif Iniquality == 2
-
     real_t C_qp_qpoases[(4*4*MPC_Step)*(3*MPC_Step)] = {0, };
-    real_t ub_qp_qpoases[(3*4*MPC_Step)*(1*MPC_Step)] = {0, };
-    real_t lb_qp_qpoases[(3*4*MPC_Step)*(1*MPC_Step)] = {0, };
-    real_t lbC_qp_qpoases[(4*4*MPC_Step)*(1*MPC_Step)] = {0, };
-
-#endif
+    real_t lbC_qp_qpoases[4*4*MPC_Step] = {0, };
+    real_t ub_qp_qpoases[3*4*MPC_Step] = {0, };
+    real_t lb_qp_qpoases[3*4*MPC_Step] = {0, };    
 
     for(int i=0; i<(12*MPC_Step); i++)
         for(int j=0; j<(12*MPC_Step); j++)
@@ -361,66 +325,27 @@ void MPCController::update()
         for(int j=0; j<(1); j++)
             g_qp_qpoases[i*(1)+j] = _g_qp(i,j);       
 
-#if Iniquality == 1
-
-    for(int i=0; i<(6*4*MPC_Step); i++)
-        for(int j=0; j<(3*MPC_Step); j++)
-            C_qp_qpoases[i*(3*MPC_Step)+j] = _C_qp(i,j);
-
-    for(int i=0; i<(6*4*MPC_Step); i++)
-        for(int j=0; j<(1*MPC_Step); j++)
-            lbC_qp_qpoases[i*(1*MPC_Step)+j] = _lbC_qp(i,j);      
-
-#elif Iniquality == 2
-
     for(int i=0; i<(4*4*MPC_Step); i++)
         for(int j=0; j<(3*MPC_Step); j++)
             C_qp_qpoases[i*(3*MPC_Step)+j] = _C_qp(i,j);
 
-    for(int i=0; i<(3*4*MPC_Step); i++)
-        for(int j=0; j<(1*MPC_Step); j++)
-            ub_qp_qpoases[i*(1*MPC_Step)+j] = _ub_qp(i,j); 
-
-    for(int i=0; i<(3*4*MPC_Step); i++)
-        for(int j=0; j<(1*MPC_Step); j++)
-            lb_qp_qpoases[i*(1*MPC_Step)+j] = _lb_qp(i,j);  
-
     for(int i=0; i<(4*4*MPC_Step); i++)
-        for(int j=0; j<(1*MPC_Step); j++)
-            lbC_qp_qpoases[i*(1*MPC_Step)+j] = _lbC_qp(i,j);                                  
+        lbC_qp_qpoases[i] = _lbC_qp(i,0); 
 
-#endif                  
+    for(int i=0; i<(3*4*MPC_Step); i++)
+        ub_qp_qpoases[i] = _ub_qp(i,0); 
 
- #if Iniquality == 0
-
-    QProblemB qp_problem( 12*MPC_Step);
-
- #else
+    for(int i=0; i<(3*4*MPC_Step); i++)
+        lb_qp_qpoases[i] = _lb_qp(i,0);               
 
     QProblem qp_problem( 12*MPC_Step, 1 );
-    //QProblemB qp_problem( 12*MPC_Step);
-
- #endif
 
     Options options;
 	qp_problem.setOptions( options );
 
     int nWSR = 1000;
-
- #if Iniquality == 1
-
-    qp_problem.init(H_qp_qpoases, g_qp_qpoases, C_qp_qpoases, NULL, NULL, lbC_qp_qpoases, NULL, nWSR);
-
- #elif Iniquality == 2
-
+ 
     qp_problem.init(H_qp_qpoases, g_qp_qpoases, C_qp_qpoases, lb_qp_qpoases, ub_qp_qpoases, lbC_qp_qpoases, NULL, nWSR);
-    //qp_problem.init(H_qp_qpoases, g_qp_qpoases, lb_qp_qpoases, ub_qp_qpoases,nWSR);
-    
- #else
-
-    qp_problem.init(H_qp_qpoases, g_qp_qpoases, NULL, NULL,nWSR);
-
- #endif   
 
 	real_t UOpt[12*MPC_Step];
     qp_problem.getPrimalSolution( UOpt );
@@ -429,102 +354,4 @@ void MPCController::update()
           UOpt[3], UOpt[4],  UOpt[5],
           UOpt[6], UOpt[7],  UOpt[8],
           UOpt[9], UOpt[10], UOpt[11];         
-
-    // Debugging Code
-/*
-    for(int i=0; i<(12*MPC_Step); i++)
-    {
-        printf("\n");
-        for(int j=0; j<(12*MPC_Step); j++)
-        {
-            //printf("[%d,%d]",i,j);
-            printf("[%d]",i*(12*MPC_Step)+j);
-        }
-    }
-*/
-/*
-    static int count = 0;
-    count++;
-    if(count < 2)
-    {
-        string filePath = "/home/kim/catkin_ws/src/gdyn-legged-locomotion/debugging.ods";
-        ofstream writeFile(filePath.data());
-
-        cout << "start" << endl;
-
-        if( writeFile.is_open() )
-        {
-            cout << "success" << endl;
-
-            //writeFile <<"_A_c = "<< endl;
-		    //writeFile << _A_c << endl << endl;                         
-    
-            writeFile <<"_B_c = "<< endl;
-		    writeFile << _B_c << endl << endl;    
-
-            //writeFile <<"_A_d = "<< endl;
-		    //writeFile << _A_d << endl << endl; 
-
-            //writeFile <<"_A_d^2 = "<< endl;
-		    //writeFile << _A_d*_A_d << endl << endl;   
-
-            //writeFile <<"_A_d^3 = "<< endl;
-		    //writeFile << _A_d*_A_d*_A_d << endl << endl;                                  
-    
-            writeFile <<"_B_d = "<< endl;
-		    writeFile << _B_d << endl << endl; 
-
-            writeFile <<"_A_d*_B_d = "<< endl;
-		    writeFile << _A_d*_B_d << endl << endl;             
-
-            writeFile <<"_A_d^2*_B_d = "<< endl;
-		    writeFile << _A_d*_A_d*_B_d << endl << endl; 
-
-            //writeFile <<"_A_qp = "<< endl;
-		    //writeFile << _A_qp << endl << endl;    
-
-            writeFile <<"_B_c_d = "<< endl;
-		    writeFile << _B_c_d << endl << endl;
-
-            writeFile <<"_B_d_d = "<< endl;
-		    writeFile << _B_d_d << endl << endl;  
-
-            writeFile <<"_B_qp = "<< endl;
-		    writeFile << _B_qp << endl << endl;   
-
-            //writeFile <<"_L_d = "<< endl;
-		    //writeFile << _L_d << endl << endl;
-
-            //writeFile <<"_L_qp = "<< endl;
-		    //writeFile << _L_qp << endl << endl;            
-
-            //writeFile <<"_K_d = "<< endl;
-		    //writeFile << _K_d << endl << endl; 
-
-            //writeFile <<"_K_qp = "<< endl;
-		    //writeFile << _K_qp << endl << endl;
-
-            //writeFile <<"_x0 = "<< endl;
-		    //writeFile << _x0 << endl << endl; 
-
-            //writeFile <<"_xref = "<< endl;
-		    //writeFile << _xref << endl << endl;     
-
-            //writeFile <<"_xref_qp = "<< endl;
-		    //writeFile << _xref_qp << endl << endl;  
-
-            //writeFile <<"_lbC_4leg = "<< endl;
-		    //writeFile << _lbC_4leg << endl << endl;     
-
-            //writeFile <<"_lbC_qp = "<< endl;
-		    //writeFile << _lbC_qp << endl << endl;                                           
-
-		    writeFile.close();
-	    }
-        else
-        {
-            cout << "fail" << endl;
-        }      
-    }
-*/
 }

@@ -4,8 +4,7 @@
 #include <iostream>
 using namespace std;
 
-#define Iniquality 0 // 0 : None Constraints / 1 : method 1 / 2 : method 2
-//#define MPC_Debugging
+#define MPC_Debugging
 
 #include <array>
 #include <utility/math_func.h>
@@ -24,15 +23,17 @@ using namespace std;
 #define MPC_Step 3
 
 #define L_00_gain 50.0
-#define L_11_gain 4000.0
+#define L_11_gain_x 10000.0
+#define L_11_gain_y 10000.0
+#define L_11_gain_z 10000.0
 #define L_22_gain 50.0
 #define L_33_gain 50.0
 #define L_44_gain 50.0
 
-#define K_00_gain 0.0000000001
-#define K_11_gain 0.0000000001
-#define K_22_gain 0.0000000001
-#define K_33_gain 0.0000000001
+#define K_00_gain 0.00000000001
+#define K_11_gain 0.00000000001
+#define K_22_gain 0.00000000001
+#define K_33_gain 0.00000000001
 
 #define Force_min 10
 #define Force_max 666 
@@ -81,7 +82,6 @@ public:
     Eigen::Matrix<double, 12, 1> _F;
 
     // Define Parameter For MPC Controller
-
     Eigen::MatrixXd _A_c, _A_d, _B_c, _B_c_d, _B_d, _B_d_d;
     Eigen::MatrixXd _I3x3, _I15x15;
     Eigen::MatrixXd _I_hat;
@@ -93,17 +93,8 @@ public:
     Eigen::MatrixXd _H_qp, _L_qp, _K_qp;   
     Eigen::MatrixXd _g_qp, _x0, _xref, _xref_qp;  
 
-#if Iniquality == 1
-
-    Eigen::MatrixXd _C_1leg, _C_4leg, _C_qp;
-    Eigen::MatrixXd _lbC_1leg, _lbC_4leg, _lbC_qp;
-
-#elif Iniquality == 2
-
     Eigen::MatrixXd _C_1leg, _C_4leg, _C_qp;
     Eigen::MatrixXd _lbC_1leg, _lbC_4leg, _lbC_qp;
     Eigen::MatrixXd _ub_1leg, _ub_4leg, _ub_qp;
-    Eigen::MatrixXd _lb_1leg, _lb_4leg, _lb_qp;
-
-#endif         
+    Eigen::MatrixXd _lb_1leg, _lb_4leg, _lb_qp;      
 };
