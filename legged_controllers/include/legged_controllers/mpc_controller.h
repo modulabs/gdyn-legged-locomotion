@@ -22,18 +22,22 @@ using namespace std;
 #define SamplingTime 0.001
 #define MPC_Step 3
 
-#define L_00_gain 50.0
-#define L_11_gain_x 10000.0
-#define L_11_gain_y 10000.0
-#define L_11_gain_z 10000.0
-#define L_22_gain 50.0
-#define L_33_gain 50.0
-#define L_44_gain 50.0
+#define L_00_gain 100.0
+#define L_11_gain_x 1000.0
+#define L_11_gain_y 1000.0
+#define L_11_gain_z 4000.0
+#define L_22_gain_wx 100.0
+#define L_22_gain_wy 100.0
+#define L_22_gain_wz 100.0
+#define L_33_gain_vx 100.0
+#define L_33_gain_vy 100.0
+#define L_33_gain_vz 100.0
+#define L_44_gain 0.0
 
-#define K_00_gain 0.00000000001
-#define K_11_gain 0.00000000001
-#define K_22_gain 0.00000000001
-#define K_33_gain 0.00000000001
+#define K_00_gain 0.000000001
+#define K_11_gain 0.000000001
+#define K_22_gain 0.000000001
+#define K_33_gain 0.000000001
 
 #define Force_min 10
 #define Force_max 666 

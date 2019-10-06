@@ -14,6 +14,7 @@ void MPCController::init(double m_body, const Eigen::Vector3d& p_body2com, const
     _B_c_d = Eigen::MatrixXd::Zero(15,12);
 
     _B_d = Eigen::MatrixXd::Zero(15,12);
+    _B_d_d = Eigen::MatrixXd::Zero(15,12);
 
     _I3x3 = Eigen::MatrixXd::Identity(3,3);
     _I15x15 = Eigen::MatrixXd::Identity(15,15);
@@ -159,6 +160,7 @@ void MPCController::update()
 
     _A_d = _I15x15+_A_c*(SamplingTime*_T15X15);
     _B_d = _B_c*(SamplingTime*_T12X12);
+    _B_d_d = _B_c_d*(SamplingTime*_T12X12);
 
     // Condensed QP formulation X = Aqp*x0 + Bqp*U
 
@@ -184,6 +186,8 @@ void MPCController::update()
         }   
     }
 
+    //_B_qp.block<15,12>(15*1,12*0) = _B_d_d;
+
     _L_d.block<3,3>(0,0) = L_00_gain*_I3x3;
 
     Eigen::Matrix3d L_11_gain_xyz;
@@ -192,9 +196,21 @@ void MPCController::update()
     L_11_gain_xyz(1,1) = L_11_gain_y*_I3x3(1,1);
     L_11_gain_xyz(2,2) = L_11_gain_z*_I3x3(2,2);
 
+    Eigen::Matrix3d L_22_gain_wxyz;
+    L_22_gain_wxyz = _I3x3;
+    L_22_gain_wxyz(0,0) = L_22_gain_wx*_I3x3(0,0);
+    L_22_gain_wxyz(1,1) = L_22_gain_wy*_I3x3(1,1);
+    L_22_gain_wxyz(2,2) = L_22_gain_wz*_I3x3(2,2);
+
+    Eigen::Matrix3d L_33_gain_vxyz;
+    L_33_gain_vxyz = _I3x3;
+    L_33_gain_vxyz(0,0) = L_33_gain_vx*_I3x3(0,0);
+    L_33_gain_vxyz(1,1) = L_33_gain_vy*_I3x3(1,1);
+    L_33_gain_vxyz(2,2) = L_33_gain_vz*_I3x3(2,2);
+
     _L_d.block<3,3>(3,3) = L_11_gain_xyz;
-    _L_d.block<3,3>(6,6) = L_22_gain*_I3x3;
-    _L_d.block<3,3>(9,9) = L_33_gain*_I3x3;
+    _L_d.block<3,3>(6,6) = L_22_gain_wxyz*_I3x3;
+    _L_d.block<3,3>(9,9) = L_33_gain_vxyz*_I3x3;
     _L_d.block<3,3>(12,12) = L_44_gain*_I3x3;
 
     _K_d.block<3,3>(0,0) = K_00_gain*_I3x3;
