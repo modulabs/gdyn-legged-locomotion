@@ -63,7 +63,7 @@ add_library(${PROJECT_NAME}
   src/mpc_controller.cpp
   src/legged_robot/leg.cpp
   src/legged_robot/body.cpp
-  src/legged_robot/legged_robot.cpp
+  src/legged_robot/quadruped_robot.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})

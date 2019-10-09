@@ -4,7 +4,7 @@
 #include <legged_robot/body.h>
 #include <array>
 
-class LeggedRobot
+class QuadrupedRobot
 {
 public:
     Body _body;
