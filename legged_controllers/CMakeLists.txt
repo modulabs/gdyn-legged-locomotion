@@ -61,6 +61,9 @@ add_library(${PROJECT_NAME}
   src/virtual_spring_damper_controller.cpp
   src/utility/math_func.cpp
   src/mpc_controller.cpp
+  src/legged_robot/leg.cpp
+  src/legged_robot/body.cpp
+  src/legged_robot/legged_robot.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
