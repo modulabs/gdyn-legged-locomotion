@@ -53,10 +53,10 @@ public:
 	Eigen::Vector3d _w;		// angular velocity
 };
 
-class LegController: public controller_interface::Controller<hardware_interface::EffortJointInterface>
+class MainController: public controller_interface::Controller<hardware_interface::EffortJointInterface>
 {
 public:
-	~LegController() { _commands_sub.shutdown(); _link_states_sub.shutdown();}
+	~MainController() { _commands_sub.shutdown(); _link_states_sub.shutdown();}
 
 	bool init(hardware_interface::EffortJointInterface* hw, ros::NodeHandle &n);
 	

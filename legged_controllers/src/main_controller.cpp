@@ -1,11 +1,11 @@
-#include <legged_controllers/leg_controller.h>
+#include <legged_controllers/main_controller.h>
 
 using namespace legged_controllers;
 
 namespace legged_controllers
 {
 
-bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::NodeHandle &n)
+bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::NodeHandle &n)
 {	
 	_loop_count = 0;
 	_node_ptr = &n;
@@ -129,17 +129,17 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 	// service updating gain
 	_gains_kp_buffer.writeFromNonRT(std::vector<double>(_n_joints, 0.0));
 	_gains_kd_buffer.writeFromNonRT(std::vector<double>(_n_joints, 0.0));
-	_update_gain_srv = n.advertiseService("update_gain", &LegController::updateGain, this);
+	_update_gain_srv = n.advertiseService("update_gain", &MainController::updateGain, this);
 
 	updateGain();
 
 	// command subscriber
 	_commands_buffer.writeFromNonRT(std::vector<double>(_n_joints, 0.0));
-	_commands_sub = n.subscribe<std_msgs::Float64MultiArray>("command", 1, &LegController::subscribeCommand, this);
+	_commands_sub = n.subscribe<std_msgs::Float64MultiArray>("command", 1, &MainController::subscribeCommand, this);
 
 	// state subscriber
 	_trunk_state_buffer.writeFromNonRT(Trunk());
-	_link_states_sub = n.subscribe("/gazebo/link_states", 1, &LegController::subscribeTrunkState, this);
+	_link_states_sub = n.subscribe("/gazebo/link_states", 1, &MainController::subscribeTrunkState, this);
 
 
 	// start realtime state publisher
@@ -176,7 +176,7 @@ bool LegController::init(hardware_interface::EffortJointInterface* hw, ros::Node
 	return true;
 }
 
-void LegController::starting(const ros::Time& time)
+void MainController::starting(const ros::Time& time)
 {
 	_t = 0;
 	
@@ -190,7 +190,7 @@ void LegController::starting(const ros::Time& time)
 	ROS_INFO("Starting Leg Controller");
 }
 
-void LegController::subscribeCommand(const std_msgs::Float64MultiArrayConstPtr& msg)
+void MainController::subscribeCommand(const std_msgs::Float64MultiArrayConstPtr& msg)
 {
 	if(msg->data.size()!=_n_joints)
 	{ 
@@ -200,7 +200,7 @@ void LegController::subscribeCommand(const std_msgs::Float64MultiArrayConstPtr& 
 	_commands_buffer.writeFromNonRT(msg->data);
 }
 
-void LegController::subscribeTrunkState(const gazebo_msgs::LinkStatesConstPtr& msg)
+void MainController::subscribeTrunkState(const gazebo_msgs::LinkStatesConstPtr& msg)
 {
 	Trunk trunk;
 	trunk._p = Eigen::Vector3d(msg->pose[1].position.x,	msg->pose[1].position.y, msg->pose[1].position.z);
@@ -215,12 +215,12 @@ void LegController::subscribeTrunkState(const gazebo_msgs::LinkStatesConstPtr& m
 	_trunk_state_buffer.writeFromNonRT(trunk);
 }
 
-bool LegController::updateGain(UpdateGain::Request& request, UpdateGain::Response& response)
+bool MainController::updateGain(UpdateGain::Request& request, UpdateGain::Response& response)
 {
 	updateGain();
 }
 
-bool LegController::updateGain()
+bool MainController::updateGain()
 {
 	std::vector<double> kp(_n_joints), kd(_n_joints);
 	std::string gain_name;
@@ -257,7 +257,7 @@ bool LegController::updateGain()
 	return true;
 }
 
-void LegController::update(const ros::Time& time, const ros::Duration& period)
+void MainController::update(const ros::Time& time, const ros::Duration& period)
 {
 	std::vector<double> & commands = *_commands_buffer.readFromRT();
 	std::vector<double> & kp = *_gains_kp_buffer.readFromRT();
@@ -524,7 +524,7 @@ void LegController::update(const ros::Time& time, const ros::Duration& period)
 	//print_state();
 }
 
-void LegController::enforceJointLimits(double &command, unsigned int index)
+void MainController::enforceJointLimits(double &command, unsigned int index)
 {
 	// Check that this joint has applicable limits
 	if (_joint_urdfs[index]->type == urdf::Joint::REVOLUTE || _joint_urdfs[index]->type == urdf::Joint::PRISMATIC)
@@ -540,7 +540,7 @@ void LegController::enforceJointLimits(double &command, unsigned int index)
 	}
 }
 
-void LegController::print_state()
+void MainController::print_state()
 {
 	static int count = 0;
 	if (count > 100)
@@ -729,5 +729,5 @@ void LegController::print_state()
 }
 
 } // namespace legged_controllers
-PLUGINLIB_EXPORT_CLASS(legged_controllers::LegController, controller_interface::ControllerBase)
+PLUGINLIB_EXPORT_CLASS(legged_controllers::MainController, controller_interface::ControllerBase)
 

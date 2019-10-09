@@ -1,8 +1,8 @@
 <library path="lib/liblegged_controllers">
 
-  <class name="legged_controllers/LegController" type="legged_controllers::LegController" base_class_type="controller_interface::ControllerBase">
+  <class name="legged_controllers/MainController" type="legged_controllers::MainController" base_class_type="controller_interface::ControllerBase">
     <description>
-	    Legged Controllers::Leg Controller
+	    Legged Controllers::Main Controller
     </description>
   </class>
 </library>
