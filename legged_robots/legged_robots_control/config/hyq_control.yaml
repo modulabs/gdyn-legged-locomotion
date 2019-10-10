@@ -3,8 +3,8 @@ hyq:
       type: joint_state_controller/JointStateController
       publish_rate: 1000
     
-    leg_controller:
-      type: legged_controllers/LegController
+    main_controller:
+      type: legged_controllers/MainController
       joints:
         - lf_haa_joint
         - lf_hfe_joint

@@ -34,6 +34,7 @@ add_message_files(FILES ControllerJointState.msg)
 add_service_files(
   FILES
   UpdateGain.srv
+  MoveBody.srv
 )
 generate_messages(DEPENDENCIES std_msgs)
 
@@ -64,6 +65,7 @@ add_library(${PROJECT_NAME}
   src/legged_robot/leg.cpp
   src/legged_robot/body.cpp
   src/legged_robot/quadruped_robot.cpp
+  src/trajectory/min_jerk.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})

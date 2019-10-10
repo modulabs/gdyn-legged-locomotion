@@ -228,7 +228,7 @@ bool MainController::updateGain()
 	for (size_t i = 0; i < _n_joints; i++)
 	{
 		// FIXME. generalize name of robot
-		gain_name = "/hyq/leg_controller/gains/" + _joint_names[i] + "/p";
+		gain_name = "/hyq/main_controller/gains/" + _joint_names[i] + "/p";
 		if (_node_ptr->getParam(gain_name, kp[i]))
 		{
 			ROS_INFO("Update gain %s = %.2f", gain_name.c_str(), kp[i]);
@@ -239,7 +239,7 @@ bool MainController::updateGain()
 			return false;
 		}
 
-		gain_name = "/hyq/leg_controller/gains/" + _joint_names[i] + "/d";
+		gain_name = "/hyq/main_controller/gains/" + _joint_names[i] + "/d";
 		if (_node_ptr->getParam(gain_name, kd[i]))
 		{
 			ROS_INFO("Update gain %s = %.2f", gain_name.c_str(), kd[i]);
@@ -255,6 +255,17 @@ bool MainController::updateGain()
 	_gains_kd_buffer.writeFromNonRT(kd);
 
 	return true;
+}
+
+bool MainController::srvMoveBodyCB(MoveBody::Request& request, MoveBody::Response& response)
+{
+	// Eigen::Vector6d delta_pose = Map<Eigen::Vector6d>(request.delta_pose);
+	
+	// p_body_d = p_body_d + delta_pose.head(3) * MM2M;
+
+	// AngleAxisd request.delta_pose[3] * D2R;
+
+	// _minjerk_traj.setTrajInput(request.delta_pose, request.duration);
 }
 
 void MainController::update(const ros::Time& time, const ros::Duration& period)

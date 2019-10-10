@@ -17,6 +17,7 @@
 
 #include <gazebo_msgs/LinkStates.h>
 #include <geometry_msgs/PoseArray.h>
+#include <legged_controllers/MoveBody.h>
 
 // kdl
 #include <kdl/tree.hpp>
@@ -66,6 +67,9 @@ public:
 	// subscribe
 	void subscribeCommand(const std_msgs::Float64MultiArrayConstPtr& msg);
 	void subscribeTrunkState(const gazebo_msgs::LinkStatesConstPtr& msg);
+
+	// service
+	bool srvMoveBodyCB(MoveBody::Request& request, MoveBody::Response& response);
 
 	bool updateGain(UpdateGain::Request& request, UpdateGain::Response& response);
 	bool updateGain();
