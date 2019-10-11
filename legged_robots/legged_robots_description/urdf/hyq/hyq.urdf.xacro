@@ -2,6 +2,8 @@
 
 <robot name="hyq" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
+<xacro:arg name="load_force_sensors" default="true"/>
+
   <xacro:include filename="$(find legged_robots_description)/urdf/hyq/hyq.gazebo.xacro" />
 
   <!-- The following included files set up definitions of parts of the robot body -->
@@ -20,13 +22,16 @@
 	<!-- trunk -->
 	<xacro:hyq_trunk name="base"/>
 
+	
+
 	<!-- LF leg -->
 	<xacro:hyq_leg
 		name="lf"
 		parent="trunk"
 		reflect_hip="1"
 		reflect_upper="1"
-		reflect_front="1">
+		reflect_front="1"
+		load_force_sensors="$(arg load_force_sensors)">
 		<origin xyz="${d_fh/2} ${d_lr/2} 0" rpy="0 ${PI/2} ${PI}"/>
 	</xacro:hyq_leg>
 
@@ -36,7 +41,8 @@
 		parent="trunk"
 		reflect_hip="-1"
 		reflect_upper="-1"
-		reflect_front="1">
+		reflect_front="1"
+		load_force_sensors="$(arg load_force_sensors)">
 		<origin xyz="${d_fh/2} ${-d_lr/2} 0" rpy="0 ${PI/2} 0"/>
 	</xacro:hyq_leg>
 
@@ -46,7 +52,8 @@
 		parent="trunk"
 		reflect_hip="-1"
 		reflect_upper="1"
-		reflect_front="-1">
+		reflect_front="-1"
+		load_force_sensors="$(arg load_force_sensors)">
 		<origin xyz="${-d_fh/2} ${d_lr/2} 0" rpy="0 ${PI/2} ${PI}"/>
 	</xacro:hyq_leg>
 
@@ -56,7 +63,8 @@
 		parent="trunk"
 		reflect_hip="1"
 		reflect_upper="-1"
-		reflect_front="-1">
+		reflect_front="-1"
+		load_force_sensors="$(arg load_force_sensors)">
 		<origin xyz="${-d_fh/2} ${-d_lr/2} 0" rpy="0 ${PI/2} 0"/>
 	</xacro:hyq_leg>
 

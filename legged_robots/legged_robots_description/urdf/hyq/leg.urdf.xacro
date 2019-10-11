@@ -2,8 +2,10 @@
 
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
+	<xacro:include filename="$(find legged_robots_description)/urdf/hyq/leg.gazebo.xacro"/>
+
 	<!-- leg macro definiction -->
-	<xacro:macro name="hyq_leg" params="name parent *origin reflect_hip reflect_upper reflect_front">
+	<xacro:macro name="hyq_leg" params="name parent *origin reflect_hip reflect_upper reflect_front load_force_sensors">
 		<!-- Joints -->
 		<!-- Hip assembly joint -->
 		<joint name="${name}_haa_joint" type="revolute">
@@ -170,6 +172,8 @@
 
 			</gazebo>
 		</link>	
+
+		<xacro:leg_gazebo name="${name}" load_force_sensors="${load_force_sensors}"/>
 	</xacro:macro>
 
 </robot>
