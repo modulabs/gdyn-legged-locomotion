@@ -1,6 +1,9 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
+<xacro:include filename="$(find legged_robots_description)/urdf/hyq/trunk.gazebo.xacro"/>
+
+
 	<!-- trunk macro definition -->
 	<xacro:macro name="hyq_trunk" params="name">
 	
