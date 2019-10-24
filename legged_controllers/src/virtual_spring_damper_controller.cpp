@@ -32,13 +32,18 @@ void VirtualSpringDamperController::init()
   
 }
 
-void VirtualSpringDamperController::setControlInput(const std::array<Eigen::Vector3d, 4>& p_leg, 
-                                                    const std::array<Eigen::Vector3d, 4>& v_leg, 
-                                                    const std::array<KDL::JntArray, 4>& G_leg)
+void VirtualSpringDamperController::setControlInput(QuadrupedRobot& robot)
 {
-    _p_leg = p_leg;
-    _v_leg = v_leg;
-    _G_leg = G_leg;
+  _p_leg = robot._p_body2leg;
+  _v_leg = robot._v_body2leg;
+
+  for (int i=0; i<4; i++)
+  {
+    for (int j=0; j<3; j++)
+      _G_leg[i](j) = robot._trq_grav_leg[i](j);
+  }
+
+
 }
 
 void VirtualSpringDamperController::getControlOutput(std::array<Eigen::Vector3d, 4>& F_leg)

@@ -4,7 +4,7 @@
 #include <iostream>
 using namespace std;
 
-#define MPC_Debugging
+#undef MPC_Debugging
 
 #include <array>
 #include <utility/math_func.h>

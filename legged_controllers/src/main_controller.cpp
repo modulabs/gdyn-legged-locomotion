@@ -59,68 +59,26 @@ bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::Nod
 	}
 
 	// kdl parser
-	if (!kdl_parser::treeFromUrdfModel(urdf, _kdl_tree)){
+  if (!kdl_parser::treeFromUrdfModel(urdf, _robot._kdl_tree)){
 		ROS_ERROR("Failed to construct kdl tree");
 		return false;
 	}
 
-	// kdl chain
-	std::string root_name, tip_name[4];
 
-	root_name = "trunk";
-	tip_name[0] = "lf_foot"; tip_name[1] = "rf_foot"; tip_name[2] = "lh_foot"; tip_name[3] = "rh_foot";
-
-	_gravity.reset(new KDL::Vector(0.0, 0.0, -9.81));
-
-	for (int i=0; i<4; i++)
-	{
-		if(!_kdl_tree.getChain(root_name, tip_name[i], _kdl_chain[i]))
-		{
-			ROS_ERROR_STREAM("Failed to get KDL chain from tree: ");
-			ROS_ERROR_STREAM("  "<<root_name<<" --> "<<tip_name);
-
-			return false;
-		}
-		else
-		{
-			_fk_pos_solver[i].reset(new KDL::ChainFkSolverPos_recursive(_kdl_chain[i]));
-			_jnt_to_jac_solver[i].reset(new KDL::ChainJntToJacSolver(_kdl_chain[i]));
-			// _jnt_to_jac_dot_solver[i].reset(new KDL::ChainJntToJacDotSolver(_kdl_chain[i])); @ To do
-			_id_solver[i].reset(new KDL::ChainDynParam(_kdl_chain[i],*_gravity));
-		}
-	}
 	
 
 	// command and state (12x1)
 	_tau_d.data = Eigen::VectorXd::Zero(_n_joints);
 	_tau_fric.data = Eigen::VectorXd::Zero(_n_joints);
-	_q_d.data = Eigen::VectorXd::Zero(_n_joints);
 	_qdot_d.data = Eigen::VectorXd::Zero(_n_joints);
 	_qddot_d.data = Eigen::VectorXd::Zero(_n_joints);
 	_q_d_old.data = Eigen::VectorXd::Zero(_n_joints);
 	_qdot_d_old.data = Eigen::VectorXd::Zero(_n_joints);
 	
-	_q.data = Eigen::VectorXd::Zero(_n_joints);
-	_qdot.data = Eigen::VectorXd::Zero(_n_joints);
-
 	_q_error.data = Eigen::VectorXd::Zero(_n_joints);
 	_qdot_error.data = Eigen::VectorXd::Zero(_n_joints);
 
-    // command and state divided into each legs (4x3)
-	for (int i=0; i<4; i++)
-	{
-        // joint state
-        _q_leg[i].resize(3);
-		_qdot_leg[i].resize(3);
 
-		// Jacobian
-		_J_leg[i].resize(3);
-
-		// Dynamics
-		_M_leg[i].resize(3);
-		_C_leg[i].resize(3);
-		_G_leg[i].resize(3);
-    }
 
 	// gains
 	_kp.resize(_n_joints);
@@ -165,13 +123,14 @@ bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::Nod
 	_virtual_spring_damper_controller.init();
 
 	// balance controller
-	double m_body = 83.282; //60.96, 71.72, 
-	double mu = 0.6;	// TO DO: get this value from robot model
-	Eigen::Matrix3d I_com = Eigen::Matrix3d::Zero();
-	I_com.diagonal() << 1.5725937, 8.5015928, 9.1954911;
-	Eigen::Vector3d p_body2com(0.056, 0.0215, 0.00358);
-	_balance_controller.init(m_body, p_body2com, I_com, mu);
-	_mpc_controller.init(m_body, p_body2com, I_com, mu);
+  _robot._m_body = 83.282; //60.96, 71.72,
+  _robot._mu_foot = 0.6;	// TO DO: get this value from robot model
+  _robot._I_com_body = Eigen::Matrix3d::Zero();
+  _robot._I_com_body.diagonal() << 1.5725937, 8.5015928, 9.1954911;
+  _robot._p_body2com = Eigen::Vector3d(0.056, 0.0215, 0.00358);
+
+  _balance_controller.init();
+  _mpc_controller.init(_robot._m_body, _robot._p_body2com, _robot._I_com_body, _robot._mu_foot);
 	
 	return true;
 }
@@ -180,13 +139,6 @@ void MainController::starting(const ros::Time& time)
 {
 	_t = 0;
 	
-	// get joint positions
-	for(size_t i=0; i<_n_joints; i++) 
-	{
-		_q(i) = _joints[i].getPosition();
-		_qdot(i) = _joints[i].getVelocity();
-	}
-
 	ROS_INFO("Starting Leg Controller");
 }
 
@@ -203,6 +155,7 @@ void MainController::subscribeCommand(const std_msgs::Float64MultiArrayConstPtr&
 void MainController::subscribeTrunkState(const gazebo_msgs::LinkStatesConstPtr& msg)
 {
 	Trunk trunk;
+
 	trunk._p = Eigen::Vector3d(msg->pose[1].position.x,	msg->pose[1].position.y, msg->pose[1].position.z);
 	trunk._v = Eigen::Vector3d(msg->twist[1].linear.x, msg->twist[1].linear.y, msg->twist[1].linear.z);
 	trunk._o = Eigen::Quaterniond(Eigen::Quaterniond(msg->pose[1].orientation.w,
@@ -283,92 +236,67 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 	// update gains and joint commands/states
 	for (size_t i=0; i<_n_joints; i++)
 	{
-		// state
-		_q(i) = _joints[i].getPosition();
-		_qdot(i) = _joints[i].getVelocity();
-		
 		// gains
 		_kp(i) = kp[i];
 		_kd(i) = kd[i];
 	}
 
 	// update state from tree (12x1) to each leg (4x3)
+  _robot.updateState();
 	for (size_t i = 0; i < _n_joints; i++)
 	{
 		if (i < 3)
 		{
-			_q_leg[0](i) = _q(i);
-			_qdot_leg[0](i) = _qdot(i);
+      _robot._q_leg_kdl[0](i) = _joints[i].getPosition();
+      _robot._qdot_leg_kdl[0](i) = _joints[i].getVelocity();
 		}
 		else if (i < 6)
 		{
-			_q_leg[1](i - 3) = _q(i);
-			_qdot_leg[1](i - 3) = _qdot(i);
+      _robot._q_leg_kdl[1](i - 3) = _joints[i].getPosition();
+      _robot._qdot_leg_kdl[1](i - 3) = _joints[i].getVelocity();
 		}
 		else if (i < 9)
 		{
-			_q_leg[2](i - 6) = _q(i);
-			_qdot_leg[2](i - 6) = _qdot(i);
+      _robot._q_leg_kdl[2](i - 6) = _joints[i].getPosition();
+      _robot._qdot_leg_kdl[2](i - 6) = _joints[i].getVelocity();
 		}
 		else
 		{
-			_q_leg[3](i - 9) = _q(i);
-			_qdot_leg[3](i - 9) = _qdot(i);
+      _robot._q_leg_kdl[3](i - 9) = _joints[i].getPosition();
+      _robot._qdot_leg_kdl[3](i - 9) = _joints[i].getVelocity();
 		}
 	}
 
+//  _robot.updateData();
+
 	// State - continuosly update, subscribe from gazebo for now, TODO: get this from state observer
-	Eigen::Vector3d p_body, p_body_dot, w_body;
-	Eigen::Matrix3d R_body;
+//  _robot.estimateState();
 
-	// static int td_ = 0;
-	// if (td_++ ==1000)
-	// {
-	// 	printf("position = %f, %f, %f\n", trunk_state._p[0], trunk_state._p[1], trunk_state._p[2]);
-	// 	td_ = 0;
-	// }
-	
-	p_body = trunk_state._p;
-	R_body = trunk_state._o.toRotationMatrix();
+  _robot._pose_body._pos = trunk_state._p;
+  _robot._pose_body._rot_quat = trunk_state._o;
 
-	p_body_dot = trunk_state._v;
-	w_body = trunk_state._w;
+  _robot._pose_vel_body._linear = trunk_state._v;
+  _robot._pose_vel_body._angular = trunk_state._w;
 
 	// update trajectory - get from this initial state(temporary)
-	static Eigen::Vector3d p_body_d, p_body_dot_d, w_body_d;
-	Eigen::Matrix3d R_body_d;
 	static int td = 0;
-	static int controller = 0;
-	if (td++ == 5000)
-	{
-		p_body_d = p_body;
-		printf("pbody_d = %f, %f, %f, pbody= %f, %f, %f", p_body_d[0], p_body_d[1], p_body_d[2], 
-												p_body[0], p_body[1], p_body[2]);
-		controller = 1;
-	}
-	p_body_dot_d.setZero();
+//	static int controller = 0;
+//	if (td++ == 5000)
+//	{
+//    _robot._pose_body_d._pos = _robot._pose_body._pos;
+////		printf("pbody_d = %f, %f, %f, pbody= %f, %f, %f", p_body_d[0], p_body_d[1], p_body_d[2],
+////												p_body[0], p_body[1], p_body[2]);
+//		controller = 1;
+//	}
 
-	R_body_d.setIdentity();
-	w_body_d.setZero();
+  _robot._pose_body_d._rot_quat.setIdentity();
+  _robot._pose_vel_body_d.setZero();
 
 	// forward kinematics
-	std::array<KDL::Frame,4> frame_leg;
 
-	for (size_t i=0; i<4; i++)
-	{
-		_fk_pos_solver[i]->JntToCart(_q_leg[i], frame_leg[i]);
 
-		_jnt_to_jac_solver[i]->JntToJac(_q_leg[i], _J_leg[i]);
-		_Jv_leg[i] = _J_leg[i].data.block(0,0,3,3);	
-		_p_leg[i] = Eigen::Vector3d(frame_leg[i].p.data);
-		_v_leg[i] = _Jv_leg[i]*_qdot_leg[i].data;
-
-		// _jnt_to_jac_dot_solver[i]->JntToJacDot(); // @ To do: Jacobian Dot Calculation
-
-		_id_solver[i]->JntToMass(_q_leg[i], _M_leg[i]);
-		_id_solver[i]->JntToCoriolis(_q_leg[i], _qdot_leg[i], _C_leg[i]);
-        _id_solver[i]->JntToGravity(_q_leg[i], _G_leg[i]);
-	}
+  _robot.calKinematics();
+  //  _robot.calDynamics();
 
 #ifdef MPC_Debugging
 
@@ -386,7 +314,7 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 			count_p = 0;
 		}
 
-		_virtual_spring_damper_controller.setControlInput(_p_leg,_v_leg,_G_leg);
+    _virtual_spring_damper_controller.setControlInput(_p_leg,_v_leg,_G_leg);
 		_virtual_spring_damper_controller.compute();
 		_virtual_spring_damper_controller.getControlOutput(_F_leg);
 
@@ -422,18 +350,15 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 	// }
 
 	// * v.02 - force calculation controller: Set virtual spring force controller (_F_leg   -   Eigen::Vector3d)
-	_virtual_spring_damper_controller.setControlInput(_p_leg,_v_leg,_G_leg);
+  _virtual_spring_damper_controller.setControlInput(_robot);
 	_virtual_spring_damper_controller.compute();
 	_virtual_spring_damper_controller.getControlOutput(_F_leg);
 
 	// * v.03 - force calculation controller: balance controller by MIT cheetah (_F_leg  -  Eigen::Vector3d)
-	_balance_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d,
-							p_body, p_body_dot, R_body, w_body, _p_leg);
-	_balance_controller.update();
-	_balance_controller.getControlOutput(_F_leg_balance);
+  _balance_controller.update(_robot, _F_leg_balance);
 
-	if (controller == 1)
-	 	_F_leg = _F_leg_balance;
+//	if (controller == 1)
+//	 	_F_leg = _F_leg_balance;
 
 	// * v.04 - MPC controller: balance controller by MIT cheetah (_F_leg  -  Eigen::Vector3d)
 	//_mpc_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d, _p_leg_d,
@@ -447,7 +372,7 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 
 	for (size_t i=0; i<4; i++)
 	{
-		_tau_leg[i] = _Jv_leg[i].transpose() * _F_leg[i];
+    _tau_leg[i] = _robot._Jv_leg[i].transpose() * _F_leg[i];
 		//_tau_leg[i] << 0, 0, 0;
 	}
 
@@ -508,12 +433,12 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 			_controller_state_pub->msg_.header.stamp = time;
 			for(int i=0; i<_n_joints; i++)
 			{
-				_controller_state_pub->msg_.command[i] = R2D*_q_d(i);
-				_controller_state_pub->msg_.command_dot[i] = R2D*_qdot_d(i);
-				_controller_state_pub->msg_.state[i] = R2D*_q(i);
-				_controller_state_pub->msg_.state_dot[i] = R2D*_qdot(i);
-				_controller_state_pub->msg_.q_error[i] = R2D*_q_error(i);
-				_controller_state_pub->msg_.qdot_error[i] = R2D*_qdot_error(i);
+//				_controller_state_pub->msg_.command[i] = R2D*_q_d(i);
+//				_controller_state_pub->msg_.command_dot[i] = R2D*_qdot_d(i);
+//				_controller_state_pub->msg_.state[i] = R2D*_q(i);
+//				_controller_state_pub->msg_.state_dot[i] = R2D*_qdot(i);
+//				_controller_state_pub->msg_.q_error[i] = R2D*_q_error(i);
+//				_controller_state_pub->msg_.qdot_error[i] = R2D*_qdot_error(i);
 				// FIXME. temporarily
 				// _controller_state_pub->msg_.effort_command[i] = _tau_d(i);
 				// _controller_state_pub->msg_.effort_feedback[i] = _tau_d(i) - _controller_state_pub->msg_.effort_feedforward[i];

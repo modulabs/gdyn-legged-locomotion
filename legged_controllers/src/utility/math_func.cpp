@@ -56,3 +56,28 @@ Matrix3d skew(const Vector3d& v)
 
     return m;
 }
+
+const Pose Pose::operator*(const Pose &b) const
+{
+  Pose a;
+
+  a._pos = _pos + _rot_quat * b._pos;
+  a._rot_quat = _rot_quat * b._rot_quat;
+
+  return a;
+}
+
+const Eigen::Vector3d Pose::operator*(const Eigen::Vector3d &b) const
+{
+  Eigen::Vector3d a;
+
+  a = _pos + _rot_quat * b;
+
+  return a;
+}
+
+void Twist::setZero()
+{
+  _linear.setZero();
+  _angular.setIdentity();
+}
