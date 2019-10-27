@@ -106,7 +106,7 @@ bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::Nod
 	_q_error.data = Eigen::VectorXd::Zero(_n_joints);
 	_qdot_error.data = Eigen::VectorXd::Zero(_n_joints);
 
-    // command and state divided into each legs (4x3)
+  // command and state divided into each legs (4x3)
 	for (int i=0; i<4; i++)
 	{
         // joint state
@@ -139,8 +139,14 @@ bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::Nod
 
 	// state subscriber
 	_trunk_state_buffer.writeFromNonRT(Trunk());
-	_link_states_sub = n.subscribe("/gazebo/link_states", 1, &MainController::subscribeTrunkState, this);
+  _link_states_sub = n.subscribe("/gazebo/link_states", 1, &MainController::subscribeTrunkState, this);
+  for (int i=0; i<4; i++)
+    _contact_states_buffer[i].writeFromNonRT(false);
 
+  _contact_states_sub[0] = n.subscribe("/hyq/lf_foot_bumper", 1, &MainController::subscribeLFContactState, this);
+  _contact_states_sub[1] = n.subscribe("/hyq/rf_foot_bumper", 1, &MainController::subscribeRFContactState, this);
+  _contact_states_sub[2] = n.subscribe("/hyq/lh_foot_bumper", 1, &MainController::subscribeLHContactState, this);
+  _contact_states_sub[3] = n.subscribe("/hyq/rh_foot_bumper", 1, &MainController::subscribeRHContactState, this);
 
 	// start realtime state publisher
 	_controller_state_pub.reset(
@@ -215,6 +221,58 @@ void MainController::subscribeTrunkState(const gazebo_msgs::LinkStatesConstPtr& 
 	_trunk_state_buffer.writeFromNonRT(trunk);
 }
 
+void MainController::subscribeLFContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
+{
+  double contact_normal[3];
+
+//  contact_normal[0] = msg->states[0].contact_normals[0].x;
+//  contact_normal[1] = msg->states[0].contact_normals[0].y;
+//  contact_normal[2] = msg->states[0].contact_normals[0].z;
+
+//  bool contact_state = (contact_normal[0]*contact_normal[0] + contact_normal[1]*contact_normal[1] + contact_normal[2]*contact_normal[2]) > 0;
+
+//  _contact_states_buffer[0].writeFromNonRT(contact_state);
+}
+
+void MainController::subscribeRFContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
+{
+//  double contact_normal[3];
+
+//  contact_normal[0] = msg->states[0].contact_normals[0].x;
+//  contact_normal[1] = msg->states[0].contact_normals[0].y;
+//  contact_normal[2] = msg->states[0].contact_normals[0].z;
+
+//  bool contact_state = (contact_normal[0]*contact_normal[0] + contact_normal[1]*contact_normal[1] + contact_normal[2]*contact_normal[2]) > 0;
+
+//  _contact_states_buffer[1].writeFromNonRT(contact_state);
+}
+
+void MainController::subscribeLHContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
+{
+//  double contact_normal[3];
+
+//  contact_normal[0] = msg->states[0].contact_normals[0].x;
+//  contact_normal[1] = msg->states[0].contact_normals[0].y;
+//  contact_normal[2] = msg->states[0].contact_normals[0].z;
+
+//  bool contact_state = (contact_normal[0]*contact_normal[0] + contact_normal[1]*contact_normal[1] + contact_normal[2]*contact_normal[2]) > 0;
+
+//  _contact_states_buffer[2].writeFromNonRT(contact_state);
+}
+
+void MainController::subscribeRHContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
+{
+//  double contact_normal[3];
+
+//  contact_normal[0] = msg->states[0].contact_normals[0].x;
+//  contact_normal[1] = msg->states[0].contact_normals[0].y;
+//  contact_normal[2] = msg->states[0].contact_normals[0].z;
+
+//  bool contact_state = (contact_normal[0]*contact_normal[0] + contact_normal[1]*contact_normal[1] + contact_normal[2]*contact_normal[2]) > 0;
+
+//  _contact_states_buffer[3].writeFromNonRT(contact_state);
+}
+
 bool MainController::updateGain(UpdateGain::Request& request, UpdateGain::Response& response)
 {
 	updateGain();
@@ -274,6 +332,16 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 	std::vector<double> & kp = *_gains_kp_buffer.readFromRT();
 	std::vector<double> & kd = *_gains_kd_buffer.readFromRT();
 	Trunk& trunk_state = *_trunk_state_buffer.readFromRT();
+  std::array<bool, 4> contact_states;
+  for (int i=0; i<4; i++)  {
+    contact_states[i] = *_contact_states_buffer[i].readFromRT();
+  }
+  static int td0 = 0;
+  if (td0++==1000)
+  {
+    ROS_INFO("contact states = %d, %d, %d, %d", contact_states[0], contact_states[1], contact_states[2], contact_states[3]);
+    td0 = 0;
+  }
 
 	double dt = period.toSec();
 	double q_d_old;

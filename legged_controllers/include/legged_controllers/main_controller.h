@@ -16,6 +16,7 @@
 #include <urdf/model.h>
 
 #include <gazebo_msgs/LinkStates.h>
+#include <gazebo_msgs/ContactsState.h>
 #include <geometry_msgs/PoseArray.h>
 #include <legged_controllers/MoveBody.h>
 
@@ -67,6 +68,10 @@ public:
 	// subscribe
 	void subscribeCommand(const std_msgs::Float64MultiArrayConstPtr& msg);
 	void subscribeTrunkState(const gazebo_msgs::LinkStatesConstPtr& msg);
+  void subscribeLFContactState(const gazebo_msgs::ContactsStateConstPtr& msg);
+  void subscribeRFContactState(const gazebo_msgs::ContactsStateConstPtr& msg);
+  void subscribeLHContactState(const gazebo_msgs::ContactsStateConstPtr& msg);
+  void subscribeRHContactState(const gazebo_msgs::ContactsStateConstPtr& msg);
 
 	// service
 	bool srvMoveBodyCB(MoveBody::Request& request, MoveBody::Response& response);
@@ -108,6 +113,7 @@ private:
 	realtime_tools::RealtimeBuffer<std::vector<double> > _gains_kd_buffer;
 
 	realtime_tools::RealtimeBuffer<Trunk> _trunk_state_buffer;
+  std::array<realtime_tools::RealtimeBuffer<bool>, 4> _contact_states_buffer;
 
 	//
 	KDL::JntArray _tau_d, _tau_fric;
@@ -139,7 +145,8 @@ private:
 	KDL::JntArray _kp, _kd;
 
 	// topic
-	ros::Subscriber _commands_sub, _link_states_sub;
+  ros::Subscriber _commands_sub, _link_states_sub;
+  std::array<ros::Subscriber, 4> _contact_states_sub;
 	boost::scoped_ptr<
 		realtime_tools::RealtimePublisher<
 			legged_controllers::ControllerJointState> > _controller_state_pub;
