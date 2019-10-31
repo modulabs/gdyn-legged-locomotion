@@ -223,54 +223,50 @@ void MainController::subscribeTrunkState(const gazebo_msgs::LinkStatesConstPtr& 
 
 void MainController::subscribeLFContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
 {
-  double contact_normal[3];
+  Eigen::Vector3d contact_force;
 
-//  contact_normal[0] = msg->states[0].contact_normals[0].x;
-//  contact_normal[1] = msg->states[0].contact_normals[0].y;
-//  contact_normal[2] = msg->states[0].contact_normals[0].z;
+  if (msg->states.size() > 0)
+    contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
 
-//  bool contact_state = (contact_normal[0]*contact_normal[0] + contact_normal[1]*contact_normal[1] + contact_normal[2]*contact_normal[2]) > 0;
+  bool contact_state = contact_force.norm() > 10;
 
-//  _contact_states_buffer[0].writeFromNonRT(contact_state);
+  _contact_states_buffer[0].writeFromNonRT(contact_state);
 }
 
 void MainController::subscribeRFContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
 {
-//  double contact_normal[3];
+  Eigen::Vector3d contact_force;
 
-//  contact_normal[0] = msg->states[0].contact_normals[0].x;
-//  contact_normal[1] = msg->states[0].contact_normals[0].y;
-//  contact_normal[2] = msg->states[0].contact_normals[0].z;
+  if (msg->states.size() > 0)
+    contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
 
-//  bool contact_state = (contact_normal[0]*contact_normal[0] + contact_normal[1]*contact_normal[1] + contact_normal[2]*contact_normal[2]) > 0;
+  bool contact_state = contact_force.norm() > 10;
 
-//  _contact_states_buffer[1].writeFromNonRT(contact_state);
+  _contact_states_buffer[1].writeFromNonRT(contact_state);
 }
 
 void MainController::subscribeLHContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
 {
-//  double contact_normal[3];
+  Eigen::Vector3d contact_force;
 
-//  contact_normal[0] = msg->states[0].contact_normals[0].x;
-//  contact_normal[1] = msg->states[0].contact_normals[0].y;
-//  contact_normal[2] = msg->states[0].contact_normals[0].z;
+  if (msg->states.size() > 0)
+    contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
 
-//  bool contact_state = (contact_normal[0]*contact_normal[0] + contact_normal[1]*contact_normal[1] + contact_normal[2]*contact_normal[2]) > 0;
+  bool contact_state = contact_force.norm() > 10;
 
-//  _contact_states_buffer[2].writeFromNonRT(contact_state);
+  _contact_states_buffer[2].writeFromNonRT(contact_state);
 }
 
 void MainController::subscribeRHContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
 {
-//  double contact_normal[3];
+  Eigen::Vector3d contact_force;
 
-//  contact_normal[0] = msg->states[0].contact_normals[0].x;
-//  contact_normal[1] = msg->states[0].contact_normals[0].y;
-//  contact_normal[2] = msg->states[0].contact_normals[0].z;
+  if (msg->states.size() > 0)
+    contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
 
-//  bool contact_state = (contact_normal[0]*contact_normal[0] + contact_normal[1]*contact_normal[1] + contact_normal[2]*contact_normal[2]) > 0;
+  bool contact_state = contact_force.norm() > 10;
 
-//  _contact_states_buffer[3].writeFromNonRT(contact_state);
+  _contact_states_buffer[3].writeFromNonRT(contact_state);
 }
 
 bool MainController::updateGain(UpdateGain::Request& request, UpdateGain::Response& response)
