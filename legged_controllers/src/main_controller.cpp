@@ -97,8 +97,14 @@ bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::Nod
 
 	// state subscriber
 	_trunk_state_buffer.writeFromNonRT(Trunk());
-	_link_states_sub = n.subscribe("/gazebo/link_states", 1, &MainController::subscribeTrunkState, this);
+  _link_states_sub = n.subscribe("/gazebo/link_states", 1, &MainController::subscribeTrunkState, this);
+  for (int i=0; i<4; i++)
+    _contact_states_buffer[i].writeFromNonRT(false);
 
+  _contact_states_sub[0] = n.subscribe("/hyq/lf_foot_bumper", 1, &MainController::subscribeLFContactState, this);
+  _contact_states_sub[1] = n.subscribe("/hyq/rf_foot_bumper", 1, &MainController::subscribeRFContactState, this);
+  _contact_states_sub[2] = n.subscribe("/hyq/lh_foot_bumper", 1, &MainController::subscribeLHContactState, this);
+  _contact_states_sub[3] = n.subscribe("/hyq/rh_foot_bumper", 1, &MainController::subscribeRHContactState, this);
 
 	// start realtime state publisher
 	_controller_state_pub.reset(
@@ -168,6 +174,54 @@ void MainController::subscribeTrunkState(const gazebo_msgs::LinkStatesConstPtr& 
 	_trunk_state_buffer.writeFromNonRT(trunk);
 }
 
+void MainController::subscribeLFContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
+{
+  Eigen::Vector3d contact_force;
+
+  if (msg->states.size() > 0)
+    contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
+
+  bool contact_state = contact_force.norm() > 10;
+
+  _contact_states_buffer[0].writeFromNonRT(contact_state);
+}
+
+void MainController::subscribeRFContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
+{
+  Eigen::Vector3d contact_force;
+
+  if (msg->states.size() > 0)
+    contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
+
+  bool contact_state = contact_force.norm() > 10;
+
+  _contact_states_buffer[1].writeFromNonRT(contact_state);
+}
+
+void MainController::subscribeLHContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
+{
+  Eigen::Vector3d contact_force;
+
+  if (msg->states.size() > 0)
+    contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
+
+  bool contact_state = contact_force.norm() > 10;
+
+  _contact_states_buffer[2].writeFromNonRT(contact_state);
+}
+
+void MainController::subscribeRHContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
+{
+  Eigen::Vector3d contact_force;
+
+  if (msg->states.size() > 0)
+    contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
+
+  bool contact_state = contact_force.norm() > 10;
+
+  _contact_states_buffer[3].writeFromNonRT(contact_state);
+}
+
 bool MainController::updateGain(UpdateGain::Request& request, UpdateGain::Response& response)
 {
 	updateGain();
@@ -227,6 +281,11 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 	std::vector<double> & kp = *_gains_kp_buffer.readFromRT();
 	std::vector<double> & kd = *_gains_kd_buffer.readFromRT();
 	Trunk& trunk_state = *_trunk_state_buffer.readFromRT();
+  
+	std::array<bool, 4> contact_states;
+	for (int i=0; i<4; i++)  {
+		contact_states[i] = *_contact_states_buffer[i].readFromRT();
+	}
 
 	double dt = period.toSec();
 	double q_d_old;
@@ -242,53 +301,67 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 	}
 
 	// update state from tree (12x1) to each leg (4x3)
-  _robot.updateState();
+
+	std::array<Eigen::Vector3d, 4> q_leg, qdot_leg;
 	for (size_t i = 0; i < _n_joints; i++)
 	{
 		if (i < 3)
 		{
-      _robot._q_leg_kdl[0](i) = _joints[i].getPosition();
-      _robot._qdot_leg_kdl[0](i) = _joints[i].getVelocity();
+			q_leg[0](i) = _joints[i].getPosieion();
+			qdot_leg[0](i) = _joints[i].getVelocity();
+
+    //   _robot._q_leg_kdl[0](i) = _joints[i].getPosition();
+    //   _robot._qdot_leg_kdl[0](i) = _joints[i].getVelocity();
 		}
 		else if (i < 6)
 		{
-      _robot._q_leg_kdl[1](i - 3) = _joints[i].getPosition();
-      _robot._qdot_leg_kdl[1](i - 3) = _joints[i].getVelocity();
+			q_leg[1](i-3) = _joints[i].getPosieion();
+			qdot_leg[1](i-3) = _joints[i].getVelocity();
+
+    //   _robot._q_leg_kdl[1](i - 3) = _joints[i].getPosition();
+    //   _robot._qdot_leg_kdl[1](i - 3) = _joints[i].getVelocity();
 		}
 		else if (i < 9)
 		{
-      _robot._q_leg_kdl[2](i - 6) = _joints[i].getPosition();
-      _robot._qdot_leg_kdl[2](i - 6) = _joints[i].getVelocity();
+			q_leg[2](i-6) = _joints[i].getPosieion();
+			qdot_leg[2](i-6) = _joints[i].getVelocity();
+
+    //   _robot._q_leg_kdl[2](i - 6) = _joints[i].getPosition();
+    //   _robot._qdot_leg_kdl[2](i - 6) = _joints[i].getVelocity();
 		}
 		else
 		{
-      _robot._q_leg_kdl[3](i - 9) = _joints[i].getPosition();
-      _robot._qdot_leg_kdl[3](i - 9) = _joints[i].getVelocity();
+			q_leg[3](i-9) = _joints[i].getPosieion();
+			qdot_leg[3](i-9) = _joints[i].getVelocity();
+
+    //   _robot._q_leg_kdl[3](i - 9) = _joints[i].getPosition();
+    //   _robot._qdot_leg_kdl[3](i - 9) = _joints[i].getVelocity();
 		}
 	}
 
-//  _robot.updateData();
-
 	// State - continuosly update, subscribe from gazebo for now, TODO: get this from state observer
-//  _robot.estimateState();
+//   _robot._pose_body._pos = trunk_state._p;
+//   _robot._pose_body._rot_quat = trunk_state._o;
 
-  _robot._pose_body._pos = trunk_state._p;
-  _robot._pose_body._rot_quat = trunk_state._o;
+//   _robot._pose_vel_body._linear = trunk_state._v;
+//   _robot._pose_vel_body._angular = trunk_state._w;
 
-  _robot._pose_vel_body._linear = trunk_state._v;
-  _robot._pose_vel_body._angular = trunk_state._w;
+    _robot.updateSensorData(q_leg, qdot_leg, Pose(trunk_state._p, trunk_state._o), PoseVel(trunk_state._v, trunk_state._w));
+
+//  _state_estimation.update(_robot); // currently not implemented, get state from gazebo simulation data
 
 	// update trajectory - get from this initial state(temporary)
 	static int td = 0;
-//	static int controller = 0;
-//	if (td++ == 5000)
-//	{
-//    _robot._pose_body_d._pos = _robot._pose_body._pos;
-////		printf("pbody_d = %f, %f, %f, pbody= %f, %f, %f", p_body_d[0], p_body_d[1], p_body_d[2],
-////												p_body[0], p_body[1], p_body[2]);
-//		controller = 1;
-//	}
+	static int controller = 0;
+	if (td++ == 5000)
+	{
+   		_robot._pose_body_d._pos = _robot._pose_body._pos;
+//		printf("pbody_d = %f, %f, %f, pbody= %f, %f, %f", p_body_d[0], p_body_d[1], p_body_d[2],
+//												p_body[0], p_body[1], p_body[2]);
+		_robot._controller = 1;
+	}
 
+	// _trajectory_generator.update(_robot);
   _robot._pose_body_d._rot_quat.setIdentity();
   _robot._pose_vel_body_d.setZero();
 

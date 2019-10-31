@@ -1,1 +1,0 @@
-#include <legged_robot/body.h>

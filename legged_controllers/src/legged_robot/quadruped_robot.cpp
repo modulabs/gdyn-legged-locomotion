@@ -44,6 +44,23 @@ int QuadrupedRobot::init()
       _id_solver[i].reset(new KDL::ChainDynParam(_kdl_chain[i],*_gravity));
     }
   }
+}
+
+void QuadrupedRobot::updateSensorData(const std::array<Eigen::Vector3d, 4>& q_leg, const std::array<Eigen::Vector3d, 4>& qdot_leg,
+                        const Pose& pose_body, const PoseVel& pose_vel_body)
+{
+  _q_leg = q_leg;
+  _qdot_leg = qdot_leg;
+  for (int i=0; i<4; i++)
+  {
+    for (int j=0; j<3; j++)
+    {
+      _q_leg_kdl[i](j) = _q_leg[i][j];
+      _qdot_leg_kdl[i](j) = _qdot_leg[i][j];
+    }
+  }
+  _pose_body = pose_body;
+  _pose_vel_body = pose_vel_body;
 
 }
 
@@ -74,10 +91,13 @@ void QuadrupedRobot::calKinematics()
   for (int i=0; i<4; i++)
       _p_world2leg[i] = _pose_body * _p_body2leg[i];
 
-  // rotation
+  // body to com
+  _pose_com_d._pos = _pose_body_d * _p_body2com;
+  _pose_com_d._rot_quat = _pose_body_d._rot_quat;
 
-    // body to com
-  //    _p_com_d = p_body_d + R_body_d * _p_body2com;
-  //    _p_com = p_body + R_body * _p_body2com;
-  //    _p_com_dot_d = p_body_dot_d + skew(w_body_d) * R_body_d * _p_body2com;
+  _pose_com._pos = _pose_body * _p_body2com;
+  _pose_com._rot_quat = _pose_body._rot_quat;
+
+  _pose_vel_com_d._linear = _pose_vel_body_d._linear + skew(_pose_vel_body_d._linear) * _pose_body_d._rot_quat.toRotationMatrix() * _p_body2com;
+  _pose_vel_com_d._angular = _pose_vel_body_d._angular;
 }

@@ -57,6 +57,12 @@ Matrix3d skew(const Vector3d& v)
     return m;
 }
 
+void Pose::setIdentity()
+{
+	_pos.setZero();
+	_rot_quat.setIdentity();
+}
+
 const Pose Pose::operator*(const Pose &b) const
 {
   Pose a;

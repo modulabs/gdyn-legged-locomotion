@@ -1,7 +1,5 @@
 #pragma once
 
-#include <legged_robot/leg.h>
-#include <legged_robot/body.h>
 #include <utility/math_func.h>
 #include <array>
 #include <boost/scoped_ptr.hpp>
@@ -24,16 +22,14 @@ typedef Twist PoseAcc;
 class QuadrupedRobot
 {
 public:
-    // consider Body, Leg class later, for now, just have all variables in QuadrupedRobot
-//    Body _body;
-//    std::array<Leg, 4> _legs;
-
   QuadrupedRobot();
   ~QuadrupedRobot();
 
   int init();
-  void updateState();
+  void updateSensorData(const std::array<Eigen::Vector3d, 4>& q, const std::array<Eigen::Vector3d, 4>& q_dot,
+                        const Pose& pose_body, const PoseVel& pose_vel_body);
   void calKinematics();
+
 
   // parameter
   double          _m_body;
