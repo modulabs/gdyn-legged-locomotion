@@ -96,6 +96,7 @@ void MPCController::setControlInput(const Eigen::Vector3d& p_body_d,
     _p_com_d = p_body_d + R_body_d * _p_body2com;
     _p_com = p_body + R_body * _p_body2com;
     _p_com_dot_d = p_body_dot_d + skew(w_body_d) * R_body_d * _p_body2com;
+    _p_com_dot = p_body_dot + skew(w_body) * R_body * _p_body2com;
 }
 
 void MPCController::getControlOutput(std::array<Eigen::Vector3d, 4>& F_leg)

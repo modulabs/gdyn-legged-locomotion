@@ -83,7 +83,6 @@ void QuadrupedRobot::updateSensorData(const std::array<Eigen::Vector3d, 4>& q_le
   _pose_body = pose_body;
   _pose_vel_body = pose_vel_body;
   _contact_states = contact_states;
-
 }
 
 void QuadrupedRobot::calKinematicsDynamics()
@@ -130,6 +129,10 @@ void QuadrupedRobot::calKinematicsDynamics()
 
   _pose_vel_com_d._linear = _pose_vel_body_d._linear + skew(_pose_vel_body_d._linear) * _pose_body_d._rot_quat.toRotationMatrix() * _p_body2com;
   _pose_vel_com_d._angular = _pose_vel_body_d._angular;
+
+  _pose_vel_com._linear = _pose_vel_body._linear + skew(_pose_vel_body._linear) * _pose_body._rot_quat.toRotationMatrix() * _p_body2com;
+  _pose_vel_com._angular = _pose_vel_body._angular;
+
 }
 
 }

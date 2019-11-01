@@ -4,6 +4,9 @@
 #include <array>
 #include <boost/scoped_ptr.hpp>
 
+// ros
+#include <ros/console.h>
+
 // kdl
 #include <kdl/tree.hpp>
 #include <kdl/kdl.hpp>

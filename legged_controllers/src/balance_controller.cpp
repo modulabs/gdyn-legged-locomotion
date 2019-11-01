@@ -4,41 +4,6 @@ void BalanceController::init()
 {
 }
 
-//void BalanceController::setControlInput(const Eigen::Vector3d& p_body_d,
-//            const Eigen::Vector3d& p_body_dot_d,
-//            const Eigen::Matrix3d& R_body_d,
-//            const Eigen::Vector3d& w_body_d,
-//			const Eigen::Vector3d& p_body,
-//            const Eigen::Vector3d& p_body_dot,
-//            const Eigen::Matrix3d& R_body,
-//            const Eigen::Vector3d w_body,
-//            const std::array<Eigen::Vector3d,4>& p_body2leg)
-//{
-//    // to world coordinates
-//    for (int i=0; i<4; i++)
-//        _p_leg[i] = p_body + R_body * p_body2leg[i];
-
-//    // rotation
-//    _w_body_d = w_body_d;
-//    _w_body = w_body;
-
-//    _R_body_d = R_body_d;
-//    _R_body = R_body;
-
-//    // body to com
-//    _p_com_d = p_body_d + R_body_d * _p_body2com;
-//    _p_com = p_body + R_body * _p_body2com;
-//    _p_com_dot_d = p_body_dot_d + skew(w_body_d) * R_body_d * _p_body2com;
-//}
-
-//void BalanceController::getControlOutput(std::array<Eigen::Vector3d, 4>& F_leg)
-//{
-//    F_leg[0] = _F.segment(0,3);
-//    F_leg[1] = _F.segment(3, 3);
-//    F_leg[2] = _F.segment(6, 3);
-//    F_leg[3] = _F.segment(9, 3);
-//}
-
 void BalanceController::calControlInput(quadruped_robot::QuadrupedRobot& robot, std::array<Eigen::Vector3d, 4>& F_leg)
 {
   // input
@@ -61,8 +26,8 @@ void BalanceController::calControlInput(quadruped_robot::QuadrupedRobot& robot, 
   static Eigen::Matrix<double, 12, 1> F_prev;
   Eigen::Matrix<double, 6, 1> bd;
   Eigen::Matrix<double, 6, 6> S;
-  double alpha=0.1;
-  double beta=0.1;
+  double alpha=0.01;
+  double beta=0.01;
 
   // Transform from raw optimizaiton form to QP optimizer form
   Eigen::Matrix<double, 12, 12, Eigen::RowMajor> H = Eigen::Matrix<double, 12, 12, Eigen::RowMajor>::Zero();
@@ -73,9 +38,9 @@ void BalanceController::calControlInput(quadruped_robot::QuadrupedRobot& robot, 
 
   //
   _kp_p << 50, 50, 100;
-  _kd_p << 10, 10, 20;
-  _kp_w << 100, 100, 100;
-  _kd_w << 20, 20, 20;
+  _kd_p << 40, 40, 80;
+  _kp_w << 200, 200, 200;
+  _kd_w << 80, 80, 80;
 
   S.setZero();
   S.diagonal() << 1, 1, 1, 2, 2, 2;
