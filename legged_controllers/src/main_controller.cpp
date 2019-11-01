@@ -64,8 +64,7 @@ bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::Nod
 		return false;
 	}
 
-
-	
+  _robot.init();
 
 	// command and state (12x1)
 	_tau_d.data = Eigen::VectorXd::Zero(_n_joints);
@@ -126,7 +125,7 @@ bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::Nod
 	}
 
   // first controller
-  _robot.setController(quadruped_robot::legs::All, quadruped_robot::controllers::VirtualSpringDamper);
+  _robot.setController(4, quadruped_robot::controllers::VirtualSpringDamper);
 
 	// virtaul spring damper controller
 	_virtual_spring_damper_controller.init();
@@ -155,7 +154,7 @@ void MainController::subscribeCommand(const std_msgs::Float64MultiArrayConstPtr&
 {
 	if(msg->data.size()!=_n_joints)
 	{ 
-	ROS_ERROR_STREAM("Dimension of command (" << msg->data.size() << ") does not match number of joints (" << _n_joints << ")! Not executing!");
+    ROS_ERROR_STREAM("Dimension of command (" << msg->data.size() << ") does not match number of joints (" << _n_joints << ")! Not executing!");
 	return; 
 	}
 	_commands_buffer.writeFromNonRT(msg->data);
@@ -280,11 +279,13 @@ bool MainController::srvMoveBodyCB(MoveBody::Request& request, MoveBody::Respons
 
 void MainController::update(const ros::Time& time, const ros::Duration& period)
 {
+  // Update from real-time buffer
 	std::vector<double> & commands = *_commands_buffer.readFromRT();
 	std::vector<double> & kp = *_gains_kp_buffer.readFromRT();
 	std::vector<double> & kd = *_gains_kd_buffer.readFromRT();
 	Trunk& trunk_state = *_trunk_state_buffer.readFromRT();
 	std::array<bool, 4> contact_states;
+
 
   for (int i=0; i<4; i++)  {
     contact_states[i] = *_contact_states_buffer[i].readFromRT();
@@ -292,14 +293,6 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 
 	double dt = period.toSec();
 	_t += dt;
-
-	// update gains and joint commands/states
-	for (size_t i=0; i<_n_joints; i++)
-	{
-		// gains
-		_kp(i) = kp[i];
-		_kd(i) = kd[i];
-	}
 
 	// update state from tree (12x1) to each leg (4x3)
 	std::array<Eigen::Vector3d, 4> q_leg, qdot_leg;
@@ -335,16 +328,18 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 
   // @TODO: Trajectory Generation, update trajectory - get from this initial state(temporary)
   // _trajectory_generator.update(_robot);
-  _robot._pose_body_d.setIdentity();
-  _robot._pose_vel_body_d.setZero();
 
 	static int td = 0;
 	if (td++ == 5000)
 	{
     _robot._pose_body_d._pos = _robot._pose_body._pos;
-    _robot.setController(quadruped_robot::legs::All, quadruped_robot::controllers::QP_Balancing);
+    _robot.setController(4, quadruped_robot::controllers::QP_Balancing);
+
+    ROS_INFO("Change Controller from virtual spring damper to qp balance");
 	}
 
+  _robot._pose_body_d._rot_quat.setIdentity();
+  _robot._pose_vel_body_d._angular.setZero();
 
   // Kinematics, Dynamics
   _robot.calKinematicsDynamics();
@@ -393,38 +388,13 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 	}
 
 #else
-
-	// // * v.01 - force calculation controller: Set force zero (_F_leg   -   Eigen::Vector3d)
-	// for (size_t i=0; i<4; i++)
-	// {
-	// 	_F_leg[i].setZero(3);
-	// }
-
-	// * v.02 - force calculation controller: Set virtual spring force controller (_F_leg   -   Eigen::Vector3d)
-  _virtual_spring_damper_controller.setControlInput(_robot);
-	_virtual_spring_damper_controller.compute();
-	_virtual_spring_damper_controller.getControlOutput(_F_leg);
-
-	// * v.03 - force calculation controller: balance controller by MIT cheetah (_F_leg  -  Eigen::Vector3d)
-  _balance_controller.update(_robot, _F_leg_balance);
-
-//	if (controller == 1)
-//	 	_F_leg = _F_leg_balance;
-
-	// * v.04 - MPC controller: balance controller by MIT cheetah (_F_leg  -  Eigen::Vector3d)
-	//_mpc_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d, _p_leg_d,
-	//						p_body, p_body_dot, R_body, w_body, _p_leg);
-	//_mpc_controller.update();
-	//_mpc_controller.getControlOutput(_F_leg_balance);
-	
-	// convert force to torque	
-
+  _virtual_spring_damper_controller.calControlInput(_robot, _F_leg);
+  _balance_controller.calControlInput(_robot, _F_leg);
 #endif
 
-	for (size_t i=0; i<4; i++)
-	{
+  // Convert force to torque
+	for (size_t i=0; i<4; i++)	{
     _tau_leg[i] = _robot._Jv_leg[i].transpose() * _F_leg[i];
-		//_tau_leg[i] << 0, 0, 0;
 	}
 
 	// torque command
@@ -440,38 +410,20 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 			_tau_d(i) = _tau_leg[3](i-9);
 	}
 
-	static int td1 = 0;
-	if(td1++==1000)
-	{
-		td1 = 0;
-		printf("*** Balance Leg Forces 0 (unit: N) ***\n");
-		printf("F = %f, %f, %f\n ", _F_leg[0](0), _F_leg[0](1), _F_leg[0](2));
-		printf("F = %f, %f, %f\n ", _F_leg_balance[0](0), _F_leg_balance[0](1), _F_leg_balance[0](2));
-		printf("tau = %f, %f, %f\n", _tau_leg[0](0), _tau_leg[0](1), _tau_leg[0](2));
-		printf("*** Balance Leg Forces 1 (unit: N) ***\n");
-		printf("F = %f, %f, %f\n ", _F_leg[1](0), _F_leg[1](1), _F_leg[1](2));
-		printf("F = %f, %f, %f\n ", _F_leg_balance[1](0), _F_leg_balance[1](1), _F_leg_balance[1](2));
-
-		printf("tau = %f, %f, %f\n", _tau_leg[1](0), _tau_leg[1](1), _tau_leg[1](2));
-		printf("*** Balance Leg Forces 2 (unit: N) ***\n");
-		printf("F = %f, %f, %f\n ", _F_leg[2](0), _F_leg[2](1), _F_leg[2](2));
-		printf("F = %f, %f, %f\n ", _F_leg_balance[2](0), _F_leg_balance[2](1), _F_leg_balance[2](2));
-		printf("tau = %f, %f, %f\n", _tau_leg[2](0), _tau_leg[2](1), _tau_leg[2](2));
-
-		printf("*** Balance Leg Forces 3 (unit: N) ***\n");
-		printf("F = %f, %f, %f\n ", _F_leg[3](0), _F_leg[3](1), _F_leg[3](2));
-		printf("F = %f, %f, %f\n ", _F_leg_balance[3](0), _F_leg_balance[3](1), _F_leg_balance[3](2));
-		printf("tau = %f, %f, %f\n", _tau_leg[3](0), _tau_leg[3](1), _tau_leg[3](2));
-	}
-
 	for(int i=0; i<_n_joints; i++)
 	{
 		// effort saturation
-		if (_tau_d(i) >= _joint_urdfs[i]->limits->effort)
-			_tau_d(i) = _joint_urdfs[i]->limits->effort;
+    if (_tau_d(i) >= _joint_urdfs[i]->limits->effort)
+    {
+      ROS_INFO("effort saturation + %d", i);
+      _tau_d(i) = _joint_urdfs[i]->limits->effort;
+    }
 		
-		if (_tau_d(i) <= -_joint_urdfs[i]->limits->effort)
-			_tau_d(i) = -_joint_urdfs[i]->limits->effort;
+    if (_tau_d(i) <= -_joint_urdfs[i]->limits->effort)
+    {
+      ROS_INFO("effort saturation - %d", i);
+      _tau_d(i) = -_joint_urdfs[i]->limits->effort;
+    }
 
 		_joints[i].setCommand( _tau_d(i) );
 	}
@@ -508,7 +460,7 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 	}
 
     // ********* printf state *********
-	//print_state();
+  //printState();
 }
 
 void MainController::enforceJointLimits(double &command, unsigned int index)
@@ -527,7 +479,7 @@ void MainController::enforceJointLimits(double &command, unsigned int index)
 	}
 }
 
-void MainController::print_state()
+void MainController::printState()
 {
 	static int count = 0;
 	if (count > 100)

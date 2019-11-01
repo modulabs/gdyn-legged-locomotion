@@ -38,7 +38,7 @@
 #include <legged_robot/quadruped_robot.h>
 
 #include <legged_controllers/balance_controller.h>
-#include <legged_controllers/virtaul_spring_damper_controller.h>
+#include <legged_controllers/virtual_spring_damper_controller.h>
 #include <legged_controllers/swing_controller.h>
 #include <legged_controllers/mpc_controller.h>
 
@@ -67,7 +67,7 @@ public:
 	void starting(const ros::Time& time);
 	void stopping(const ros::Time& time) { }
 
-	// subscribe
+  // Subscribe
 	void subscribeCommand(const std_msgs::Float64MultiArrayConstPtr& msg);
 	void subscribeTrunkState(const gazebo_msgs::LinkStatesConstPtr& msg);
   void subscribeLFContactState(const gazebo_msgs::ContactsStateConstPtr& msg);
@@ -75,16 +75,17 @@ public:
   void subscribeLHContactState(const gazebo_msgs::ContactsStateConstPtr& msg);
   void subscribeRHContactState(const gazebo_msgs::ContactsStateConstPtr& msg);
 
-	// service
+  // Service
 	bool srvMoveBodyCB(MoveBody::Request& request, MoveBody::Response& response);
 
 	bool updateGain(UpdateGain::Request& request, UpdateGain::Response& response);
 	bool updateGain();
 
+  // Update
 	void update(const ros::Time& time, const ros::Duration& period);
 
 	void enforceJointLimits(double &command, unsigned int index);
-	void print_state();
+  void printState();
 
 private:
 	int _loop_count;
@@ -98,8 +99,6 @@ private:
 	std::vector<std::string> _joint_names;
 	std::vector<hardware_interface::JointHandle> _joints;
 	std::vector<urdf::JointConstSharedPtr> _joint_urdfs;
-
-
 
   // Quadruped Robot
   quadruped_robot::QuadrupedRobot _robot;

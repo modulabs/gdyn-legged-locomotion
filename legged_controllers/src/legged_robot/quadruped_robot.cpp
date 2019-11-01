@@ -3,34 +3,40 @@
 namespace quadruped_robot
 {
 
-void QuadrupedRobot::setController(legs::Leg l, controllers::Controller controller)
-{
-  if (l==legs::All)
-  {
-    _controller.fill(controller);
-  }
-  else {
-    _controller[static_cast<size_t>(l)] = controller;
-  }
-
-}
-
 QuadrupedRobot::QuadrupedRobot()
 {
   // command and state divided into each legs (4x3)
   for (size_t i=0; i<4; i++)
   {
     // joint state
-    _q_leg_kdl[i].resize(3);
-    _qdot_leg_kdl[i].resize(3);
+    _kdl_q_leg[i].resize(3);
+    _kdl_qdot_leg[i].resize(3);
 
     // Jacobian
-    _J_leg[i].resize(3);
+    _kdl_J_leg[i].resize(3);
 
     // Dynamics
-    _M_leg[i].resize(3);
-    _C_leg[i].resize(3);
-    _G_leg[i].resize(3);
+    _kdl_inertia_mat_leg[i].resize(3);
+    _kdl_trq_coriolis_leg[i].resize(3);
+    _kdl_trq_grav_leg[i].resize(3);
+  }
+}
+
+controllers::Controller QuadrupedRobot::getController(size_t i)
+{
+  if (i == 4)
+    return _controller[0];  // representative
+  else
+    return _controller[i];
+}
+
+void QuadrupedRobot::setController(size_t i, controllers::Controller controller)
+{
+  if (i == 4)  {
+    _controller.fill(controller);
+  }
+  else {
+    _controller[i] = controller;
   }
 }
 
@@ -42,7 +48,7 @@ int QuadrupedRobot::init()
   root_name = "trunk";
   tip_name[0] = "lf_foot"; tip_name[1] = "rf_foot"; tip_name[2] = "lh_foot"; tip_name[3] = "rh_foot";
 
-  _gravity.reset(new KDL::Vector(0.0, 0.0, -9.81));
+  _kdl_gravity = KDL::Vector(0.0, 0.0, -9.81);
 
   for (size_t i=0; i<4; i++)
   {
@@ -52,10 +58,10 @@ int QuadrupedRobot::init()
     }
     else
     {
-      _fk_pos_solver[i].reset(new KDL::ChainFkSolverPos_recursive(_kdl_chain[i]));
-      _jnt_to_jac_solver[i].reset(new KDL::ChainJntToJacSolver(_kdl_chain[i]));
+      _kdl_fkin_solver[i].reset(new KDL::ChainFkSolverPos_recursive(_kdl_chain[i]));
+      _kdl_jacobian_solver[i].reset(new KDL::ChainJntToJacSolver(_kdl_chain[i]));
       // _jnt_to_jac_dot_solver[i].reset(new KDL::ChainJntToJacDotSolver(_kdl_chain[i])); @ To do
-      _id_solver[i].reset(new KDL::ChainDynParam(_kdl_chain[i],*_gravity));
+      _kdl_idyn_solver[i].reset(new KDL::ChainDynParam(_kdl_chain[i],_kdl_gravity));
     }
   }
 }
@@ -70,8 +76,8 @@ void QuadrupedRobot::updateSensorData(const std::array<Eigen::Vector3d, 4>& q_le
   {
     for (size_t j=0; j<3; j++)
     {
-      _q_leg_kdl[i](j) = _q_leg[i][j];
-      _qdot_leg_kdl[i](j) = _qdot_leg[i][j];
+      _kdl_q_leg[i](j) = _q_leg[i][j];
+      _kdl_qdot_leg[i](j) = _qdot_leg[i][j];
     }
   }
   _pose_body = pose_body;
@@ -86,18 +92,29 @@ void QuadrupedRobot::calKinematicsDynamics()
 
   for (size_t i=0; i<4; i++)
   {
-    _fk_pos_solver[i]->JntToCart(_q_leg_kdl[i], frame_leg[i]);
+    _kdl_fkin_solver[i]->JntToCart(_kdl_q_leg[i], frame_leg[i]);
+    _kdl_jacobian_solver[i]->JntToJac(_kdl_q_leg[i], _kdl_J_leg[i]);
 
-    _jnt_to_jac_solver[i]->JntToJac(_q_leg_kdl[i], _J_leg[i]);
-    _Jv_leg[i] = _J_leg[i].data.block(0,0,3,3);
+    _Jv_leg[i] = _kdl_J_leg[i].data.block(0,0,3,3);
     _p_body2leg[i] = Eigen::Vector3d(frame_leg[i].p.data);
-    _v_body2leg[i] = _Jv_leg[i]*_qdot_leg_kdl[i].data;
+    _v_body2leg[i] = _Jv_leg[i]*_kdl_qdot_leg[i].data;
 
     // _jnt_to_jac_dot_solver[i]->JntToJacDot(); // @ To do: Jacobian Dot Calculation
 
-    _id_solver[i]->JntToMass(_q_leg_kdl[i], _M_leg[i]);
-    _id_solver[i]->JntToCoriolis(_q_leg_kdl[i], _qdot_leg_kdl[i], _C_leg[i]);
-    _id_solver[i]->JntToGravity(_q_leg_kdl[i], _G_leg[i]);
+    _kdl_idyn_solver[i]->JntToMass(_kdl_q_leg[i], _kdl_inertia_mat_leg[i]);
+    _kdl_idyn_solver[i]->JntToCoriolis(_kdl_q_leg[i], _kdl_qdot_leg[i], _kdl_trq_coriolis_leg[i]);
+    _kdl_idyn_solver[i]->JntToGravity(_kdl_q_leg[i], _kdl_trq_grav_leg[i]);
+
+    for (size_t j=0; j<3; j++)
+    {
+      for (size_t k=0; k<3; k++)
+      {
+        _inertia_mat_leg[i](j,k) = _kdl_inertia_mat_leg[i](j,k);
+      }
+
+      _trq_coriolis_leg[i](j) = _kdl_trq_coriolis_leg[i](j);
+      _trq_grav_leg[i](j) = _kdl_trq_grav_leg[i](j);
+    }
   }
 
   // to world coordinates

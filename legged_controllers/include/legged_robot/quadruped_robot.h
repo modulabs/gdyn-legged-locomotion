@@ -18,18 +18,6 @@
 namespace quadruped_robot
 {
 
-namespace legs
-{
-  enum Leg
-  {
-    LF,
-    RF,
-    LH,
-    RH,
-    All
-  };
-}
-
 namespace controllers
 {
   enum Controller
@@ -51,8 +39,11 @@ public:
   QuadrupedRobot();
   ~QuadrupedRobot();
 
+  // get function
+  controllers::Controller getController(size_t i);
+
   // set function
-  void setController(legs::Leg l, controllers::Controller controller);
+  void setController(size_t i, controllers::Controller controller);
 
   // main routine
   int init();
@@ -76,9 +67,10 @@ public:
   std::array<bool, 4> _contact_states;
 
   // joint space
-  std::array<KDL::JntArray,4> _q_leg_kdl, _qdot_leg_kdl;
+  std::array<KDL::JntArray,4> _kdl_q_leg, _kdl_qdot_leg;
   std::array<Eigen::Vector3d, 4> _q_leg, _q_leg_d, _qdot_leg, _qdot_leg_d, _qddot_leg_d;
-  std::array<Eigen::Vector3d, 4> _trq_leg, _trq_idyn_leg, _trq_grav_leg;
+  std::array<Eigen::Matrix3d, 4> _inertia_mat_leg, _coriolis_mat_leg;
+  std::array<Eigen::Vector3d, 4> _trq_leg, _trq_idyn_leg, _trq_inertia_leg, _trq_coriolis_leg, _trq_grav_leg;
 
   // leg
   std::array<Eigen::Vector3d, 4> _p_body2leg, _p_world2leg;  // body to leg
@@ -94,21 +86,21 @@ public:
 
   // kinematics, dynamics
   // kdl
-  boost::scoped_ptr<KDL::Vector> _gravity;
+  KDL::Vector _kdl_gravity;
   KDL::Tree 	_kdl_tree;
   std::array<KDL::Chain, 4>	_kdl_chain;
-  std::array<boost::scoped_ptr<KDL::ChainFkSolverPos_recursive>, 4> _fk_pos_solver;
-  std::array<boost::scoped_ptr<KDL::ChainJntToJacSolver>, 4> _jnt_to_jac_solver;
+  std::array<boost::shared_ptr<KDL::ChainFkSolverPos_recursive>, 4> _kdl_fkin_solver;
+  std::array<boost::shared_ptr<KDL::ChainJntToJacSolver>, 4> _kdl_jacobian_solver;
   // std::array<boost::scoped_ptr<KDL::ChainJntToJacDotSolver>, 4> _jnt_to_jac_dot_solver;  @ To do
-  std::array<boost::scoped_ptr<KDL::ChainDynParam>, 4> _id_solver;
+  std::array<boost::shared_ptr<KDL::ChainDynParam>, 4> _kdl_idyn_solver;
 
-  std::array<KDL::Jacobian, 4> _J_leg;
+  std::array<KDL::Jacobian, 4> _kdl_J_leg;
   std::array<Eigen::MatrixXd, 4> _Jv_leg;
 
   //
-  std::array<KDL::JntSpaceInertiaMatrix, 4> _M_leg; // joint space intertia matrix
-  std::array<KDL::JntArray, 4> _C_leg;              // coriolis vector
-  std::array<KDL::JntArray, 4> _G_leg;              // gravity torque vector
+  std::array<KDL::JntSpaceInertiaMatrix, 4> _kdl_inertia_mat_leg; // joint space intertia matrix
+  std::array<KDL::JntArray, 4> _kdl_trq_coriolis_leg;              // coriolis vector
+  std::array<KDL::JntArray, 4> _kdl_trq_grav_leg;              // gravity torque vector
 };
 
 }

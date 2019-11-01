@@ -14,6 +14,7 @@
 #include <qpOASES.hpp>
 #define GRAVITY_CONSTANT 9.81
 
+#include <ros/console.h>
 //
 #include <legged_robot/quadruped_robot.h>
 
@@ -36,7 +37,7 @@ public:
 
 //    void getControlOutput(std::array<Eigen::Vector3d, 4>& F_leg);
 
-    void update(quadruped_robot::QuadrupedRobot& robot, std::array<Eigen::Vector3d, 4>& F_leg);
+    void calControlInput(quadruped_robot::QuadrupedRobot& robot, std::array<Eigen::Vector3d, 4>& F_leg);
 
 public:
 //    // optimization output
