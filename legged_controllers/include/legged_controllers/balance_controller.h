@@ -36,7 +36,7 @@ public:
 
 //    void getControlOutput(std::array<Eigen::Vector3d, 4>& F_leg);
 
-    void update(QuadrupedRobot& robot, std::array<Eigen::Vector3d, 4>& F_leg);
+    void update(quadruped_robot::QuadrupedRobot& robot, std::array<Eigen::Vector3d, 4>& F_leg);
 
 public:
 //    // optimization output

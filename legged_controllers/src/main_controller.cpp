@@ -125,6 +125,9 @@ bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::Nod
 		_controller_state_pub->msg_.effort_feedback.push_back(0.0);
 	}
 
+  // first controller
+  _robot.setController(quadruped_robot::legs::All, quadruped_robot::controllers::VirtualSpringDamper);
+
 	// virtaul spring damper controller
 	_virtual_spring_damper_controller.init();
 
@@ -281,15 +284,13 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 	std::vector<double> & kp = *_gains_kp_buffer.readFromRT();
 	std::vector<double> & kd = *_gains_kd_buffer.readFromRT();
 	Trunk& trunk_state = *_trunk_state_buffer.readFromRT();
-  
 	std::array<bool, 4> contact_states;
-	for (int i=0; i<4; i++)  {
-		contact_states[i] = *_contact_states_buffer[i].readFromRT();
+
+  for (int i=0; i<4; i++)  {
+    contact_states[i] = *_contact_states_buffer[i].readFromRT();
 	}
 
 	double dt = period.toSec();
-	double q_d_old;
-
 	_t += dt;
 
 	// update gains and joint commands/states
@@ -301,75 +302,52 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 	}
 
 	// update state from tree (12x1) to each leg (4x3)
-
 	std::array<Eigen::Vector3d, 4> q_leg, qdot_leg;
 	for (size_t i = 0; i < _n_joints; i++)
 	{
 		if (i < 3)
 		{
-			q_leg[0](i) = _joints[i].getPosieion();
+      q_leg[0](i) = _joints[i].getPosition();
 			qdot_leg[0](i) = _joints[i].getVelocity();
-
-    //   _robot._q_leg_kdl[0](i) = _joints[i].getPosition();
-    //   _robot._qdot_leg_kdl[0](i) = _joints[i].getVelocity();
 		}
 		else if (i < 6)
 		{
-			q_leg[1](i-3) = _joints[i].getPosieion();
+      q_leg[1](i-3) = _joints[i].getPosition();
 			qdot_leg[1](i-3) = _joints[i].getVelocity();
-
-    //   _robot._q_leg_kdl[1](i - 3) = _joints[i].getPosition();
-    //   _robot._qdot_leg_kdl[1](i - 3) = _joints[i].getVelocity();
 		}
 		else if (i < 9)
 		{
-			q_leg[2](i-6) = _joints[i].getPosieion();
+      q_leg[2](i-6) = _joints[i].getPosition();
 			qdot_leg[2](i-6) = _joints[i].getVelocity();
-
-    //   _robot._q_leg_kdl[2](i - 6) = _joints[i].getPosition();
-    //   _robot._qdot_leg_kdl[2](i - 6) = _joints[i].getVelocity();
 		}
 		else
 		{
-			q_leg[3](i-9) = _joints[i].getPosieion();
+      q_leg[3](i-9) = _joints[i].getPosition();
 			qdot_leg[3](i-9) = _joints[i].getVelocity();
-
-    //   _robot._q_leg_kdl[3](i - 9) = _joints[i].getPosition();
-    //   _robot._qdot_leg_kdl[3](i - 9) = _joints[i].getVelocity();
 		}
 	}
 
-	// State - continuosly update, subscribe from gazebo for now, TODO: get this from state observer
-//   _robot._pose_body._pos = trunk_state._p;
-//   _robot._pose_body._rot_quat = trunk_state._o;
+  // Sensor Data - continuosly update, subscribe from gazebo for now, @TODO: get this as raw sensor data
+  _robot.updateSensorData(q_leg, qdot_leg, Pose(trunk_state._p, trunk_state._o), PoseVel(trunk_state._v, trunk_state._w), contact_states);
 
-//   _robot._pose_vel_body._linear = trunk_state._v;
-//   _robot._pose_vel_body._angular = trunk_state._w;
+  // @TODO: State Estimation, For now, use gazebo data
+  //  _state_estimation.update(_robot);
 
-    _robot.updateSensorData(q_leg, qdot_leg, Pose(trunk_state._p, trunk_state._o), PoseVel(trunk_state._v, trunk_state._w));
-
-//  _state_estimation.update(_robot); // currently not implemented, get state from gazebo simulation data
-
-	// update trajectory - get from this initial state(temporary)
-	static int td = 0;
-	static int controller = 0;
-	if (td++ == 5000)
-	{
-   		_robot._pose_body_d._pos = _robot._pose_body._pos;
-//		printf("pbody_d = %f, %f, %f, pbody= %f, %f, %f", p_body_d[0], p_body_d[1], p_body_d[2],
-//												p_body[0], p_body[1], p_body[2]);
-		_robot._controller = 1;
-	}
-
-	// _trajectory_generator.update(_robot);
-  _robot._pose_body_d._rot_quat.setIdentity();
+  // @TODO: Trajectory Generation, update trajectory - get from this initial state(temporary)
+  // _trajectory_generator.update(_robot);
+  _robot._pose_body_d.setIdentity();
   _robot._pose_vel_body_d.setZero();
 
-	// forward kinematics
+	static int td = 0;
+	if (td++ == 5000)
+	{
+    _robot._pose_body_d._pos = _robot._pose_body._pos;
+    _robot.setController(quadruped_robot::legs::All, quadruped_robot::controllers::QP_Balancing);
+	}
 
 
-  _robot.calKinematics();
-  //  _robot.calDynamics();
+  // Kinematics, Dynamics
+  _robot.calKinematicsDynamics();
 
 #ifdef MPC_Debugging
 

@@ -1,10 +1,24 @@
 #include <legged_robot/quadruped_robot.h>
 
+namespace quadruped_robot
+{
+
+void QuadrupedRobot::setController(legs::Leg l, controllers::Controller controller)
+{
+  if (l==legs::All)
+  {
+    _controller.fill(controller);
+  }
+  else {
+    _controller[static_cast<size_t>(l)] = controller;
+  }
+
+}
 
 QuadrupedRobot::QuadrupedRobot()
 {
   // command and state divided into each legs (4x3)
-  for (int i=0; i<4; i++)
+  for (size_t i=0; i<4; i++)
   {
     // joint state
     _q_leg_kdl[i].resize(3);
@@ -30,7 +44,7 @@ int QuadrupedRobot::init()
 
   _gravity.reset(new KDL::Vector(0.0, 0.0, -9.81));
 
-  for (int i=0; i<4; i++)
+  for (size_t i=0; i<4; i++)
   {
     if(!_kdl_tree.getChain(root_name, tip_name[i], _kdl_chain[i]))
     {
@@ -47,13 +61,14 @@ int QuadrupedRobot::init()
 }
 
 void QuadrupedRobot::updateSensorData(const std::array<Eigen::Vector3d, 4>& q_leg, const std::array<Eigen::Vector3d, 4>& qdot_leg,
-                        const Pose& pose_body, const PoseVel& pose_vel_body)
+                        const Pose& pose_body, const PoseVel& pose_vel_body,
+                        const std::array<bool, 4>& contact_states)
 {
   _q_leg = q_leg;
   _qdot_leg = qdot_leg;
-  for (int i=0; i<4; i++)
+  for (size_t i=0; i<4; i++)
   {
-    for (int j=0; j<3; j++)
+    for (size_t j=0; j<3; j++)
     {
       _q_leg_kdl[i](j) = _q_leg[i][j];
       _qdot_leg_kdl[i](j) = _qdot_leg[i][j];
@@ -61,10 +76,11 @@ void QuadrupedRobot::updateSensorData(const std::array<Eigen::Vector3d, 4>& q_le
   }
   _pose_body = pose_body;
   _pose_vel_body = pose_vel_body;
+  _contact_states = contact_states;
 
 }
 
-void QuadrupedRobot::calKinematics()
+void QuadrupedRobot::calKinematicsDynamics()
 {
   std::array<KDL::Frame,4> frame_leg;
 
@@ -77,9 +93,6 @@ void QuadrupedRobot::calKinematics()
     _p_body2leg[i] = Eigen::Vector3d(frame_leg[i].p.data);
     _v_body2leg[i] = _Jv_leg[i]*_qdot_leg_kdl[i].data;
 
-    _q_leg[i] = Eigen::Vector3d(frame_leg[i].p.data);
-    _qdot_leg[i] = _Jv_leg[i]*_qdot_leg_kdl[i].data;
-
     // _jnt_to_jac_dot_solver[i]->JntToJacDot(); // @ To do: Jacobian Dot Calculation
 
     _id_solver[i]->JntToMass(_q_leg_kdl[i], _M_leg[i]);
@@ -88,7 +101,7 @@ void QuadrupedRobot::calKinematics()
   }
 
   // to world coordinates
-  for (int i=0; i<4; i++)
+  for (size_t i=0; i<4; i++)
       _p_world2leg[i] = _pose_body * _p_body2leg[i];
 
   // body to com
@@ -100,4 +113,6 @@ void QuadrupedRobot::calKinematics()
 
   _pose_vel_com_d._linear = _pose_vel_body_d._linear + skew(_pose_vel_body_d._linear) * _pose_body_d._rot_quat.toRotationMatrix() * _p_body2com;
   _pose_vel_com_d._angular = _pose_vel_body_d._angular;
+}
+
 }

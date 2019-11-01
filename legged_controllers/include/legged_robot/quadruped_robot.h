@@ -15,9 +15,35 @@
 // #include <kdl/chainjnttojacdotsolver.hpp>     // @ To do: jacobian derivative
 #include <kdl/chaindynparam.hpp>              // inverse dynamics
 
+namespace quadruped_robot
+{
 
-typedef Twist PoseVel;
-typedef Twist PoseAcc;
+namespace legs
+{
+  enum Leg
+  {
+    LF,
+    RF,
+    LH,
+    RH,
+    All
+  };
+}
+
+namespace controllers
+{
+  enum Controller
+  {
+    VirtualSpringDamper,
+    QP_Balancing,
+    MPC_Balancing,
+    MPC_WholeBody_Balancing,
+    Swing
+  };
+}
+
+
+
 
 class QuadrupedRobot
 {
@@ -25,10 +51,16 @@ public:
   QuadrupedRobot();
   ~QuadrupedRobot();
 
+  // set function
+  void setController(legs::Leg l, controllers::Controller controller);
+
+  // main routine
   int init();
   void updateSensorData(const std::array<Eigen::Vector3d, 4>& q, const std::array<Eigen::Vector3d, 4>& q_dot,
-                        const Pose& pose_body, const PoseVel& pose_vel_body);
-  void calKinematics();
+                        const Pose& pose_body, const PoseVel& pose_vel_body,
+                        const std::array<bool, 4>& contact_states);
+  void calKinematicsDynamics();
+
 
 
   // parameter
@@ -37,9 +69,11 @@ public:
   Eigen::Matrix3d _I_com_body;
   Eigen::Vector3d _p_body2com;
 
+  // controller
+  std::array<controllers::Controller, 4> _controller;
 
   // state
-  std::array<bool, 4> _contact_state;
+  std::array<bool, 4> _contact_states;
 
   // joint space
   std::array<KDL::JntArray,4> _q_leg_kdl, _qdot_leg_kdl;
@@ -76,3 +110,5 @@ public:
   std::array<KDL::JntArray, 4> _C_leg;              // coriolis vector
   std::array<KDL::JntArray, 4> _G_leg;              // gravity torque vector
 };
+
+}

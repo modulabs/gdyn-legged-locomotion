@@ -18,7 +18,7 @@ public:
 
     void init();
 
-    void setControlInput(QuadrupedRobot& robot);
+    void setControlInput(quadruped_robot::QuadrupedRobot& robot);
 
     void getControlOutput(std::array<Eigen::Vector3d, 4>& F_leg);
 

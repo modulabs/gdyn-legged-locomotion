@@ -32,7 +32,7 @@ void VirtualSpringDamperController::init()
   
 }
 
-void VirtualSpringDamperController::setControlInput(QuadrupedRobot& robot)
+void VirtualSpringDamperController::setControlInput(quadruped_robot::QuadrupedRobot& robot)
 {
   _p_leg = robot._p_body2leg;
   _v_leg = robot._v_body2leg;

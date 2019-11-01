@@ -102,7 +102,7 @@ private:
 
 
   // Quadruped Robot
-  QuadrupedRobot _robot;
+  quadruped_robot::QuadrupedRobot _robot;
 
 	// cmd, state
 	realtime_tools::RealtimeBuffer<std::vector<double> > _commands_buffer;

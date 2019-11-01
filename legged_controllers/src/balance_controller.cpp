@@ -39,7 +39,7 @@ void BalanceController::init()
 //    F_leg[3] = _F.segment(9, 3);
 //}
 
-void BalanceController::update(QuadrupedRobot& robot, std::array<Eigen::Vector3d, 4>& F_leg)
+void BalanceController::update(quadruped_robot::QuadrupedRobot& robot, std::array<Eigen::Vector3d, 4>& F_leg)
 {
   // input
   double m = robot._m_body;
