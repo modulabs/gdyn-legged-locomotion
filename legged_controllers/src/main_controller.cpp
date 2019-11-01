@@ -415,13 +415,13 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 		// effort saturation
     if (_tau_d(i) >= _joint_urdfs[i]->limits->effort)
     {
-      ROS_INFO("effort saturation + %d", i);
+//       ROS_INFO("effort saturation + %d", i);
       _tau_d(i) = _joint_urdfs[i]->limits->effort;
     }
 		
     if (_tau_d(i) <= -_joint_urdfs[i]->limits->effort)
     {
-      ROS_INFO("effort saturation - %d", i);
+//      ROS_INFO("effort saturation - %d", i);
       _tau_d(i) = -_joint_urdfs[i]->limits->effort;
     }
 
