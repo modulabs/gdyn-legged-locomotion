@@ -9,8 +9,9 @@ using Eigen::Matrix3d;
 using Eigen::Quaterniond;
 using Eigen::AngleAxisd;
 
-#define R2D (180/3.141592)
-#define D2R (3.141592/180)
+//#define PI (3.141592)
+#define R2D (180/PI)
+#define D2R (PI/180)
 #define M2MM (1000)
 #define MM2M (0.001)
 

@@ -42,9 +42,7 @@
 #include <legged_controllers/swing_controller.h>
 #include <legged_controllers/mpc_controller.h>
 
-#define PI 3.141592
-#define D2R PI/180.0
-#define R2D 180.0/PI
+
 
 namespace legged_controllers
 {
@@ -109,7 +107,7 @@ private:
 	realtime_tools::RealtimeBuffer<std::vector<double> > _gains_kd_buffer;
 
 	realtime_tools::RealtimeBuffer<Trunk> _trunk_state_buffer;
-  std::array<realtime_tools::RealtimeBuffer<bool>, 4> _contact_states_buffer;
+  std::array<realtime_tools::RealtimeBuffer<int>, 4> _contact_states_buffer;
 
 	//
 	KDL::JntArray _tau_d, _tau_fric;

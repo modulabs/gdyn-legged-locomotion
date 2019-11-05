@@ -29,7 +29,7 @@ void VirtualSpringDamperController::init()
   
 }
 
-void VirtualSpringDamperController::calControlInput(quadruped_robot::QuadrupedRobot& robot, std::array<Eigen::Vector3d, 4>& F_leg)
+void VirtualSpringDamperController::update(quadruped_robot::QuadrupedRobot& robot, std::array<Eigen::Vector3d, 4>& F_leg)
 {
 
   // Set Input
@@ -43,9 +43,9 @@ void VirtualSpringDamperController::calControlInput(quadruped_robot::QuadrupedRo
     if (robot.getController(i) == quadruped_robot::controllers::VirtualSpringDamper)
     {
       // desired foot position/velocity form hip joint
-      _xd[i].p(0) = 0.0;
-      _xd[i].p(1) = 0.0;
-      _xd[i].p(2) = -0.4;
+      _xd[i].p(0) = robot._p_body2leg_d[i][0];
+      _xd[i].p(1) = robot._p_body2leg_d[i][1];
+      _xd[i].p(2) = robot._p_body2leg_d[i][2];
 
       _xd_dot[i].vel(0) = 0.0;
       _xd_dot[i].vel(1) = 0.0;

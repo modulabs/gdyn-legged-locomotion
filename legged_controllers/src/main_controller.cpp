@@ -98,7 +98,7 @@ bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::Nod
 	_trunk_state_buffer.writeFromNonRT(Trunk());
   _link_states_sub = n.subscribe("/gazebo/link_states", 1, &MainController::subscribeTrunkState, this);
   for (int i=0; i<4; i++)
-    _contact_states_buffer[i].writeFromNonRT(false);
+    _contact_states_buffer[i].writeFromNonRT(0);
 
   _contact_states_sub[0] = n.subscribe("/hyq/lf_foot_bumper", 1, &MainController::subscribeLFContactState, this);
   _contact_states_sub[1] = n.subscribe("/hyq/rf_foot_bumper", 1, &MainController::subscribeRFContactState, this);
@@ -124,21 +124,22 @@ bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::Nod
 		_controller_state_pub->msg_.effort_feedback.push_back(0.0);
 	}
 
-  // first controller
-  _robot.setController(4, quadruped_robot::controllers::VirtualSpringDamper);
-
-	// virtaul spring damper controller
-	_virtual_spring_damper_controller.init();
-
-	// balance controller
+  // balance controller
   _robot._m_body = 83.282; //60.96, 71.72,
   _robot._mu_foot = 0.6;	// TO DO: get this value from robot model
   _robot._I_com_body = Eigen::Matrix3d::Zero();
   _robot._I_com_body.diagonal() << 1.5725937, 8.5015928, 9.1954911;
   _robot._p_body2com = Eigen::Vector3d(0.056, 0.0215, 0.00358);
 
+  // Controllers
+	_virtual_spring_damper_controller.init();
   _balance_controller.init();
   _mpc_controller.init(_robot._m_body, _robot._p_body2com, _robot._I_com_body, _robot._mu_foot);
+
+  // first controller
+  _robot.setController(4, quadruped_robot::controllers::VirtualSpringDamper);
+  for (size_t i=0; i<4; i++)
+    _robot._p_body2leg_d[i] = Vector3d(0,0,-0.4);
 	
 	return true;
 }
@@ -183,9 +184,10 @@ void MainController::subscribeLFContactState(const gazebo_msgs::ContactsStateCon
   if (msg->states.size() > 0)
     contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
 
-  bool contact_state = contact_force.norm() > 10;
-
-  _contact_states_buffer[0].writeFromNonRT(contact_state);
+  if (contact_force.norm() > 10)
+    _contact_states_buffer[0].writeFromNonRT(1);
+  else
+    _contact_states_buffer[0].writeFromNonRT(0);
 }
 
 void MainController::subscribeRFContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
@@ -195,9 +197,10 @@ void MainController::subscribeRFContactState(const gazebo_msgs::ContactsStateCon
   if (msg->states.size() > 0)
     contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
 
-  bool contact_state = contact_force.norm() > 10;
-
-  _contact_states_buffer[1].writeFromNonRT(contact_state);
+  if (contact_force.norm() > 10)
+    _contact_states_buffer[1].writeFromNonRT(1);
+  else
+    _contact_states_buffer[1].writeFromNonRT(0);
 }
 
 void MainController::subscribeLHContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
@@ -207,9 +210,11 @@ void MainController::subscribeLHContactState(const gazebo_msgs::ContactsStateCon
   if (msg->states.size() > 0)
     contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
 
-  bool contact_state = contact_force.norm() > 10;
+  if (contact_force.norm() > 10)
+    _contact_states_buffer[2].writeFromNonRT(1);
+  else
+    _contact_states_buffer[2].writeFromNonRT(0);
 
-  _contact_states_buffer[2].writeFromNonRT(contact_state);
 }
 
 void MainController::subscribeRHContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
@@ -219,9 +224,10 @@ void MainController::subscribeRHContactState(const gazebo_msgs::ContactsStateCon
   if (msg->states.size() > 0)
     contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
 
-  bool contact_state = contact_force.norm() > 10;
-
-  _contact_states_buffer[3].writeFromNonRT(contact_state);
+  if (contact_force.norm() > 10)
+    _contact_states_buffer[3].writeFromNonRT(1);
+  else
+    _contact_states_buffer[3].writeFromNonRT(0);
 }
 
 bool MainController::updateGain(UpdateGain::Request& request, UpdateGain::Response& response)
@@ -284,10 +290,10 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 	std::vector<double> & kp = *_gains_kp_buffer.readFromRT();
 	std::vector<double> & kd = *_gains_kd_buffer.readFromRT();
 	Trunk& trunk_state = *_trunk_state_buffer.readFromRT();
-	std::array<bool, 4> contact_states;
+  std::array<int, 4> contact_states;
 
 
-  for (int i=0; i<4; i++)  {
+  for (size_t i=0; i<4; i++)  {
     contact_states[i] = *_contact_states_buffer[i].readFromRT();
 	}
 
@@ -333,10 +339,30 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 	if (td++ == 5000)
 	{
     _robot._pose_body_d._pos = _robot._pose_body._pos;
-    _robot.setController(4, quadruped_robot::controllers::QP_Balancing);
+    _robot._pose_body_d._pos(2) += 100*MM2M;
+    _robot.setController(4, quadruped_robot::controllers::BalancingQP);
 
     ROS_INFO("Change Controller from virtual spring damper to qp balance");
 	}
+
+  if (td == 10000)
+  {
+    _robot._pose_body_d._pos(0) -= 100*MM2M;
+    _robot._pose_body_d._pos(1) -= 100*MM2M;
+    _robot.setController(4, quadruped_robot::controllers::BalancingQP);
+
+    ROS_INFO("Change Controller from virtual spring damper to qp balance");
+  }
+
+  if (td == 15000)
+  {
+    _robot._p_body2leg_d[0](2) = -0.2;
+    ROS_INFO("Change Controller to 3 leg balancing mode.");
+    _robot.setController(0, quadruped_robot::controllers::VirtualSpringDamper);
+    _robot.setController(1, quadruped_robot::controllers::BalancingQP);
+    _robot.setController(2, quadruped_robot::controllers::BalancingQP);
+    _robot.setController(3, quadruped_robot::controllers::BalancingQP);
+  }
 
   _robot._pose_body_d._rot_quat.setIdentity();
   _robot._pose_vel_body_d._angular.setZero();
@@ -388,8 +414,8 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 	}
 
 #else
-  _virtual_spring_damper_controller.calControlInput(_robot, _F_leg);
-  _balance_controller.calControlInput(_robot, _F_leg);
+  _virtual_spring_damper_controller.update(_robot, _F_leg);
+  _balance_controller.update(_robot, _F_leg);
 #endif
 
   // Convert force to torque

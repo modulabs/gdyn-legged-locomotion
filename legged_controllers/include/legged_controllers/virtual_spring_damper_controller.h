@@ -21,7 +21,7 @@ public:
 
     void init();
 
-    void calControlInput(quadruped_robot::QuadrupedRobot& robot, std::array<Eigen::Vector3d, 4>& F_leg);
+    void update(quadruped_robot::QuadrupedRobot& robot, std::array<Eigen::Vector3d, 4>& F_leg);
 
 public:
     std::array<Eigen::Vector3d, 4> _kp_leg;

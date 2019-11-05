@@ -26,9 +26,9 @@ namespace controllers
   enum Controller
   {
     VirtualSpringDamper,
-    QP_Balancing,
-    MPC_Balancing,
-    MPC_WholeBody_Balancing,
+    BalancingQP,
+    BalancingMPC,
+    BalancingMPCWholeBody,
     Swing
   };
 }
@@ -52,7 +52,7 @@ public:
   int init();
   void updateSensorData(const std::array<Eigen::Vector3d, 4>& q, const std::array<Eigen::Vector3d, 4>& q_dot,
                         const Pose& pose_body, const PoseVel& pose_vel_body,
-                        const std::array<bool, 4>& contact_states);
+                        const std::array<int, 4>& contact_states);
   void calKinematicsDynamics();
 
 
@@ -67,7 +67,7 @@ public:
   std::array<controllers::Controller, 4> _controller;
 
   // state
-  std::array<bool, 4> _contact_states;
+  std::array<int, 4> _contact_states;
 
   // joint space
   std::array<KDL::JntArray,4> _kdl_q_leg, _kdl_qdot_leg;
@@ -76,9 +76,11 @@ public:
   std::array<Eigen::Vector3d, 4> _trq_leg, _trq_idyn_leg, _trq_inertia_leg, _trq_coriolis_leg, _trq_grav_leg;
 
   // leg
-  std::array<Eigen::Vector3d, 4> _p_body2leg, _p_world2leg;  // body to leg
-  std::array<Eigen::Vector3d, 4> _v_body2leg, _v_world2leg;  // body to leg
-  std::array<Eigen::Vector3d, 4> _F_body2leg, _F_world2leg;  // body to leg
+  std::array<Eigen::Vector3d, 4> _p_body2leg, _p_world2leg;
+  std::array<Eigen::Vector3d, 4> _v_body2leg, _v_world2leg;
+  std::array<Eigen::Vector3d, 4> _F_body2leg, _F_world2leg, _F_world2leg_prev;
+
+  std::array<Eigen::Vector3d, 4> _p_body2leg_d;
 
   // body
   Pose  _pose_body, _pose_body_d;         // world to body

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <numeric>
 #include <utility/math_func.h>
 
 // kdl
@@ -17,6 +18,14 @@
 #include <ros/console.h>
 //
 #include <legged_robot/quadruped_robot.h>
+
+using Eigen::Vector3d;
+using Eigen::Matrix3d;
+using Eigen::Matrix;
+using Eigen::Dynamic;
+using Eigen::ColMajor;
+using Eigen::RowMajor;
+using Eigen::NoChange;
 
 class BalanceController
 {
@@ -37,15 +46,31 @@ public:
 
 //    void getControlOutput(std::array<Eigen::Vector3d, 4>& F_leg);
 
-    void calControlInput(quadruped_robot::QuadrupedRobot& robot, std::array<Eigen::Vector3d, 4>& F_leg);
+    void update(quadruped_robot::QuadrupedRobot& robot, std::array<Vector3d, 4>& F_leg);
 
 public:
-//    // optimization output
-//    Eigen::Matrix<double, 12, 1> _F, _F_prev;
-
     // gain
     Eigen::Vector3d _kp_p, _kd_p, _kp_w, _kd_w;
 
-    // optimization variable
+    // Legs to optimize
+    std::vector<size_t> _legs;
 
+    // Optimization
+    Matrix<double, 6, Dynamic, ColMajor, 6, 12> _A;
+    Matrix<double, Dynamic, 1, ColMajor, 12, 1> _F;
+    Matrix<double, Dynamic, 1, ColMajor, 12, 1> _F_prev;
+    Matrix<double, 6, 1> _bd;
+    Matrix<double, 6, 6> _S;
+
+    // QP optimization
+    Matrix<double, Dynamic, Dynamic, RowMajor, 12, 12> _H;
+    Matrix<double, Dynamic, Dynamic, ColMajor, 12, 12> _Alpha;
+    Matrix<double, Dynamic, Dynamic, ColMajor, 12, 12> _Beta;
+    Matrix<double, Dynamic, 1, ColMajor, 12, 1> _g;
+
+    // Inequality constraint
+
+    Matrix<double, Dynamic, Dynamic, RowMajor, 16, 12> _C;
+    Matrix<double, 1, Dynamic, RowMajor, 1, 12> _lb, _ub;
+    Matrix<double, 1, Dynamic, RowMajor, 1, 16> _ubC;
 };

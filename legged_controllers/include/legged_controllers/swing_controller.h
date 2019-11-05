@@ -9,6 +9,8 @@
 #include <kdl/chaindynparam.hpp>
 #include <kdl_parser/kdl_parser.hpp>
 
+#include <legged_robot/quadruped_robot.h>
+
 class SwingController
 {
 public:
@@ -16,16 +18,7 @@ public:
 
     void init();
 
-    void setControlInput(const std::array<Eigen::Vector3d, 4>& p_leg, 
-                        const std::array<Eigen::Vector3d, 4>& v_leg,
-                        const std::array<Eigen::MatrixXd, 4>& Jv_leg,
-                        const std::array<KDL::JntSpaceInertiaMatrix, 4>& M_leg,
-                        const std::array<KDL::JntArray, 4>& C_leg, 
-                        const std::array<KDL::JntArray, 4>& G_leg);
-
-    void getControlOutput(std::array<Eigen::Vector3d, 4>& F_leg);
-
-    void compute();
+    void update(quadruped_robot::QuadrupedRobot& robot, std::array<Eigen::Vector3d, 4>& F_leg);
 
 public:
     std::array<KDL::JntArray, 4> _kp_leg;

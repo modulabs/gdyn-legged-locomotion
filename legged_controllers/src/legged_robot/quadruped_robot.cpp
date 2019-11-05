@@ -68,7 +68,7 @@ int QuadrupedRobot::init()
 
 void QuadrupedRobot::updateSensorData(const std::array<Eigen::Vector3d, 4>& q_leg, const std::array<Eigen::Vector3d, 4>& qdot_leg,
                         const Pose& pose_body, const PoseVel& pose_vel_body,
-                        const std::array<bool, 4>& contact_states)
+                        const std::array<int, 4>& contact_states)
 {
   _q_leg = q_leg;
   _qdot_leg = qdot_leg;
@@ -87,6 +87,10 @@ void QuadrupedRobot::updateSensorData(const std::array<Eigen::Vector3d, 4>& q_le
 
 void QuadrupedRobot::calKinematicsDynamics()
 {
+  // previous variable
+  _F_world2leg_prev = _F_world2leg;
+
+  //
   std::array<KDL::Frame,4> frame_leg;
 
   for (size_t i=0; i<4; i++)

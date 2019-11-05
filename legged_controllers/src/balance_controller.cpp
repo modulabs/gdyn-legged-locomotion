@@ -2,108 +2,156 @@
 
 void BalanceController::init()
 {
+  _legs.reserve(4);
 }
 
-void BalanceController::calControlInput(quadruped_robot::QuadrupedRobot& robot, std::array<Eigen::Vector3d, 4>& F_leg)
+void BalanceController::update(quadruped_robot::QuadrupedRobot& robot, std::array<Vector3d, 4>& F_leg)
 {
   // input
   double m = robot._m_body;
   double mu = robot._mu_foot;
-  Eigen::Matrix3d& I_com = robot._I_com_body;
-  Eigen::Vector3d& p_com_d = robot._pose_com_d._pos;
-  Eigen::Vector3d& p_com = robot._pose_com._pos;
-  Eigen::Vector3d& v_com_d = robot._pose_vel_com_d._linear;
-  Eigen::Vector3d& v_com = robot._pose_vel_com._linear;
-  Eigen::Matrix3d R_d = robot._pose_body_d._rot_quat.toRotationMatrix();
-  Eigen::Matrix3d R = robot._pose_body._rot_quat.toRotationMatrix();
-  Eigen::Vector3d& w_d = robot._pose_vel_body_d._angular;
-  Eigen::Vector3d& w = robot._pose_vel_body._angular;
-  const std::array<Eigen::Vector3d, 4>& p_leg = robot._p_world2leg;
+  const Matrix3d& I_com = robot._I_com_body;
+  const Vector3d& p_com_d = robot._pose_com_d._pos;
+  const Vector3d& p_com = robot._pose_com._pos;
+  const Vector3d& v_com_d = robot._pose_vel_com_d._linear;
+  const Vector3d& v_com = robot._pose_vel_com._linear;
+  const Matrix3d R_d = robot._pose_body_d._rot_quat.toRotationMatrix();
+  const Matrix3d R = robot._pose_body._rot_quat.toRotationMatrix();
+  const Vector3d& w_d = robot._pose_vel_body_d._angular;
+  const Vector3d& w = robot._pose_vel_body._angular;
+  const std::array<Vector3d, 4>& p_leg = robot._p_world2leg;
+  const std::array<int, 4>& contact_states = robot._contact_states;
+  const std::array<Vector3d, 4>& F_total_prev = robot._F_world2leg_prev;
 
-  // Optimization
-  Eigen::Matrix<double, 6, 12> A;
-  Eigen::Matrix<double, 12, 1> F;
-  static Eigen::Matrix<double, 12, 1> F_prev;
-  Eigen::Matrix<double, 6, 1> bd;
-  Eigen::Matrix<double, 6, 6> S;
-  double alpha=0.01;
-  double beta=0.01;
+  // contact number
+  _legs.clear();
+  for (size_t i=0; i<4; i++)
+  {
+    if (robot.getController(i) == quadruped_robot::controllers::BalancingQP && contact_states[i] == 1)
+      _legs.push_back(i);
+  }
 
-  // Transform from raw optimizaiton form to QP optimizer form
-  Eigen::Matrix<double, 12, 12, Eigen::RowMajor> H = Eigen::Matrix<double, 12, 12, Eigen::RowMajor>::Zero();
-  Eigen::Matrix<double, 12, 12> Alpha = alpha * Eigen::Matrix<double, 12,12>::Identity();
-  Eigen::Matrix<double, 12, 12> Beta = beta * Eigen::Matrix<double, 12,12>::Identity();
-  Eigen::Matrix<double, 12, 1> g;
-  Eigen::Matrix<double, 16, 12, Eigen::RowMajor> C = Eigen::Matrix<double, 16, 12, Eigen::RowMajor>::Zero();
+  if (_legs.size() < 1)
+    return;
+
+  int opt_size = 3*_legs.size();
+  int inequality_constraint_size = 4*_legs.size();
+
+//  // Optimization
+//  Matrix<double, 6, Dynamic, ColMajor, 6, 12> A;
+//  Matrix<double, Dynamic, 1, ColMajor, 12, 1> F;
+//  Matrix<double, Dynamic, 1, ColMajor, 12, 1> F_prev;
+//  Matrix<double, 6, 1> bd;
+//  Matrix<double, 6, 6> S;
+//  double alpha=0.01;
+//  double beta=0.01;
+
+//  // QP optimization
+//  Matrix<double, Dynamic, Dynamic, RowMajor, 12, 12> H;
+//  Matrix<double, Dynamic, Dynamic, ColMajor, 12, 12> Alpha;
+//  Matrix<double, Dynamic, Dynamic, ColMajor, 12, 12> Beta;
+//  Matrix<double, Dynamic, 1, ColMajor, 12, 1> g;
+
+//  // Inequality constraint
+//  double fz_max = 400;    // 600N is total mass load of hyq, later have to get this value from actuator capacity
+//  Matrix<double, Dynamic, Dynamic, RowMajor, 16, 12> C;
+//  Matrix<double, 1, Dynamic, RowMajor, 1, 12> lb, ub;
+//  Matrix<double, 1, Dynamic, RowMajor, 1, 16> ubC;
+
+  // Resize
+  _A.resize(NoChange, opt_size);
+  _F.resize(opt_size);
+  _F_prev.resize(opt_size);
+  _H.resize(opt_size, opt_size);
+  _Alpha.resize(opt_size, opt_size);
+  _Beta.resize(opt_size, opt_size);
+  _g.resize(opt_size);
+  _C.resize(inequality_constraint_size, opt_size);
+  _lb.resize(opt_size);
+  _ub.resizeLike(_lb);
+  _ubC.resize(inequality_constraint_size);
 
   //
-  _kp_p << 50, 50, 100;
-  _kd_p << 40, 40, 80;
-  _kp_w << 200, 200, 200;
-  _kd_w << 80, 80, 80;
+  _H.setZero();
+  _C.setZero();
+  _ubC.setZero();
 
-  S.setZero();
-  S.diagonal() << 1, 1, 1, 2, 2, 2;
+  // gains
+  _kp_p << 100, 100, 200;
+  _kd_p << 10, 10, 20;
+  _kp_w << 400, 800, 200;
+  _kd_w << 20, 20, 20;
 
-  bd.head(3) = m * ( _kp_p.cwiseProduct(p_com_d - p_com) + _kd_p.cwiseProduct(v_com_d - v_com) + Eigen::Vector3d(0,0,GRAVITY_CONSTANT) );
-  bd.tail(3) = R*I_com*R.transpose() * ( _kp_w.cwiseProduct(logR(R_d*R.transpose())) + _kd_w.cwiseProduct(w_d - w) );
+  _S.setZero();
+  _S.diagonal() << 1, 1, 1, 2, 2, 2;
 
-  for (int i=0; i<4; i++)
+  double alpha = 0.01;
+  double beta = 0.01;
+  _Alpha.setIdentity().diagonal().setConstant(alpha);
+  _Beta.setIdentity().diagonal().setConstant(beta);
+
+  double fz_max = 400;    // 600N is total mass load of hyq, later have to get this value from actuator capacity
+
+  // Desired acceleration
+  _bd.head(3) = m * ( _kp_p.cwiseProduct(p_com_d - p_com) + _kd_p.cwiseProduct(v_com_d - v_com) + Vector3d(0,0,GRAVITY_CONSTANT) );
+  _bd.tail(3) = R*I_com*R.transpose() * ( _kp_w.cwiseProduct(logR(R_d*R.transpose())) + _kd_w.cwiseProduct(w_d - w) );
+
+  // Stacking matrix with contact foot variable
+  for (int l=0, i=0; l < _legs.size(); l++, i++)
   {
-      A.block<3,3>(0,3*i) = Eigen::Matrix3d::Identity();
-      A.block<3,3>(3,3*i) = skew(p_leg[i] - p_com);
+    _F_prev.segment<3>(3*i) = F_total_prev[_legs[l]];
+
+    // Dynamics
+    _A.block<3,3>(0,3*i) = Matrix3d::Identity();
+    _A.block<3,3>(3,3*i) = skew(p_leg[_legs[l]] - p_com);
+
+    // Inequality constraint matrix from friction cone
+    _C.block<4,3>(4*i,3*i) << 1, 0, -mu,
+                            -1, 0, -mu,
+                             0, 1, -mu,
+                            0, -1, -mu;
+    _lb.segment<3>(3*i) << -mu*fz_max, -mu*fz_max, 10;
+    _ub.segment<3>(3*i) << mu*fz_max, mu*fz_max, fz_max;
   }
 
-  H.topLeftCorner(12, 12) = A.transpose()*S*A + Alpha + Beta;
+  // Objective matrix
+  _H = _A.transpose()*_S*_A + _Alpha + _Beta;   // Hessian
+  _g = -_A.transpose()*_S*_bd - beta*_F_prev;  // Gradient
 
-  g = -A.transpose()*S*bd - beta*F_prev;
-
-  // Inequality constraint matrix from friction cone
-  for (int i=0; i<4; i++)
-  {
-      C.block<4,3>(4*i,3*i) << 1, 0, -mu,
-                              -1, 0, -mu,
-                               0, 1, -mu,
-                              0, -1, -mu;
-  }
   // Optimization
   USING_NAMESPACE_QPOASES
 
-  real_t fz_max = 400;    // 600N is total mass load of hyq, later have to get this value from actuator capacity
-  real_t lb[12] = {-mu*fz_max, -mu*fz_max, 10,
-                  -mu*fz_max, -mu*fz_max, 10,
-                  -mu*fz_max, -mu*fz_max, 10,
-                  -mu*fz_max, -mu*fz_max, 10};
-  real_t ub[12] = {mu*fz_max, mu*fz_max, fz_max,
-                  mu*fz_max, mu*fz_max, fz_max,
-                  mu*fz_max, mu*fz_max,fz_max,
-                  mu*fz_max, mu*fz_max, fz_max};
-  real_t ubA[16] = {0.0,};
 
-  QProblem qp_problem( 12, 16);
+
+//  real_t lb[12] = {-mu*fz_max, -mu*fz_max, 10,
+//                  -mu*fz_max, -mu*fz_max, 10,
+//                  -mu*fz_max, -mu*fz_max, 10,
+//                  -mu*fz_max, -mu*fz_max, 10};
+//  real_t ub[12] = {mu*fz_max, mu*fz_max, fz_max,
+//                  mu*fz_max, mu*fz_max, fz_max,
+//                  mu*fz_max, mu*fz_max,fz_max,
+//                  mu*fz_max, mu*fz_max, fz_max};
+//  real_t ubA[16] = {0.0,};
+
+  QProblem qp_problem( opt_size, inequality_constraint_size);
 
   Options options;
   qp_problem.setOptions( options );
 
-  int nWSR = 1000;
-  qp_problem.init(H.data(), g.data(), C.data(), lb, ub, NULL, ubA, nWSR);
+  int nWSR = 100;
+  qp_problem.init(_H.data(), _g.data(), _C.data(), _lb.data(), _ub.data(), NULL, _ubC.data(), nWSR);
 
   real_t xOpt[12];
-  real_t yOpt[12+1];
+//  real_t yOpt[12+1];
   qp_problem.getPrimalSolution( xOpt );
 
-  F << xOpt[0], xOpt[1], xOpt[2],
-      xOpt[3], xOpt[4], xOpt[5],
-      xOpt[6], xOpt[7], xOpt[8],
-      xOpt[9], xOpt[10], xOpt[11];
-
-  F_prev = F;
-
-  for (size_t i=0; i<4; i++)
+  for (int i=0; i<opt_size; i++)
   {
-    if (robot.getController(i) == quadruped_robot::controllers::QP_Balancing)
-    {
-      F_leg[i] = -R.transpose()*F.segment(3*i,3);
-    }
+    _F(i) = xOpt[i];
+  }
+
+  for (int l=0, i=0; l<_legs.size(); l++, i++)
+  {
+    F_leg[_legs[l]] = -R.transpose()*_F.segment<3>(3*i);
   }
 }
