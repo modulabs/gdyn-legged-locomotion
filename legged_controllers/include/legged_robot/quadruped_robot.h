@@ -76,7 +76,7 @@ public:
   std::array<Eigen::Vector3d, 4> _trq_leg, _trq_idyn_leg, _trq_inertia_leg, _trq_coriolis_leg, _trq_grav_leg;
 
   // leg
-  std::array<Eigen::Vector3d, 4> _p_body2leg, _p_world2leg;
+  std::array<Eigen::Vector3d, 4> _p_body2leg, _p_world2leg, _p_world2leg_d;
   std::array<Eigen::Vector3d, 4> _v_body2leg, _v_world2leg;
   std::array<Eigen::Vector3d, 4> _F_body2leg, _F_world2leg, _F_world2leg_prev;
 

@@ -5,8 +5,8 @@ using namespace legged_controllers;
 namespace legged_controllers
 {
 
-bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::NodeHandle &n)
-{	
+bool MainController::init(hardware_interface::EffortJointInterface *hw, ros::NodeHandle &n)
+{
 	_loop_count = 0;
 	_node_ptr = &n;
 
@@ -18,7 +18,7 @@ bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::Nod
 	}
 	_n_joints = _joint_names.size();
 
-	if(_n_joints == 0)
+	if (_n_joints == 0)
 	{
 		ROS_ERROR("List of joint names is empty.");
 		return false;
@@ -37,13 +37,13 @@ bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::Nod
 	}
 
 	// joint handle
-	for(int i=0; i<_n_joints; i++)
+	for (int i = 0; i < _n_joints; i++)
 	{
 		try
 		{
 			_joints.push_back(hw->getHandle(_joint_names[i]));
 		}
-		catch (const hardware_interface::HardwareInterfaceException& e)
+		catch (const hardware_interface::HardwareInterfaceException &e)
 		{
 			ROS_ERROR_STREAM("Exception thrown: " << e.what());
 			return false;
@@ -55,16 +55,17 @@ bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::Nod
 			ROS_ERROR("Could not find joint '%s' in urdf", _joint_names[i].c_str());
 			return false;
 		}
-		_joint_urdfs.push_back(joint_urdf); 
+		_joint_urdfs.push_back(joint_urdf);
 	}
 
 	// kdl parser
-  if (!kdl_parser::treeFromUrdfModel(urdf, _robot._kdl_tree)){
+	if (!kdl_parser::treeFromUrdfModel(urdf, _robot._kdl_tree))
+	{
 		ROS_ERROR("Failed to construct kdl tree");
 		return false;
 	}
 
-  _robot.init();
+	_robot.init();
 
 	// command and state (12x1)
 	_tau_d.data = Eigen::VectorXd::Zero(_n_joints);
@@ -73,11 +74,9 @@ bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::Nod
 	_qddot_d.data = Eigen::VectorXd::Zero(_n_joints);
 	_q_d_old.data = Eigen::VectorXd::Zero(_n_joints);
 	_qdot_d_old.data = Eigen::VectorXd::Zero(_n_joints);
-	
+
 	_q_error.data = Eigen::VectorXd::Zero(_n_joints);
 	_qdot_error.data = Eigen::VectorXd::Zero(_n_joints);
-
-
 
 	// gains
 	_kp.resize(_n_joints);
@@ -96,21 +95,21 @@ bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::Nod
 
 	// state subscriber
 	_trunk_state_buffer.writeFromNonRT(Trunk());
-  _link_states_sub = n.subscribe("/gazebo/link_states", 1, &MainController::subscribeTrunkState, this);
-  for (int i=0; i<4; i++)
-    _contact_states_buffer[i].writeFromNonRT(0);
+	_link_states_sub = n.subscribe("/gazebo/link_states", 1, &MainController::subscribeTrunkState, this);
+	for (int i = 0; i < 4; i++)
+		_contact_states_buffer[i].writeFromNonRT(0);
 
-  _contact_states_sub[0] = n.subscribe("/hyq/lf_foot_bumper", 1, &MainController::subscribeLFContactState, this);
-  _contact_states_sub[1] = n.subscribe("/hyq/rf_foot_bumper", 1, &MainController::subscribeRFContactState, this);
-  _contact_states_sub[2] = n.subscribe("/hyq/lh_foot_bumper", 1, &MainController::subscribeLHContactState, this);
-  _contact_states_sub[3] = n.subscribe("/hyq/rh_foot_bumper", 1, &MainController::subscribeRHContactState, this);
+	_contact_states_sub[0] = n.subscribe("/hyq/lf_foot_bumper", 1, &MainController::subscribeLFContactState, this);
+	_contact_states_sub[1] = n.subscribe("/hyq/rf_foot_bumper", 1, &MainController::subscribeRFContactState, this);
+	_contact_states_sub[2] = n.subscribe("/hyq/lh_foot_bumper", 1, &MainController::subscribeLHContactState, this);
+	_contact_states_sub[3] = n.subscribe("/hyq/rh_foot_bumper", 1, &MainController::subscribeRHContactState, this);
 
 	// start realtime state publisher
 	_controller_state_pub.reset(
 		new realtime_tools::RealtimePublisher<legged_controllers::ControllerJointState>(n, "state", 1));
 
 	_controller_state_pub->msg_.header.stamp = ros::Time::now();
-	for (size_t i=0; i<_n_joints; i++)
+	for (size_t i = 0; i < _n_joints; i++)
 	{
 		_controller_state_pub->msg_.name.push_back(_joint_names[i]);
 		_controller_state_pub->msg_.command.push_back(0.0);
@@ -124,113 +123,120 @@ bool MainController::init(hardware_interface::EffortJointInterface* hw, ros::Nod
 		_controller_state_pub->msg_.effort_feedback.push_back(0.0);
 	}
 
-  // balance controller
-  _robot._m_body = 83.282; //60.96, 71.72,
-  _robot._mu_foot = 0.6;	// TO DO: get this value from robot model
-  _robot._I_com_body = Eigen::Matrix3d::Zero();
-  _robot._I_com_body.diagonal() << 1.5725937, 8.5015928, 9.1954911;
-  _robot._p_body2com = Eigen::Vector3d(0.056, 0.0215, 0.00358);
+	// For balance controller and mpc controller
+	_robot._m_body = 83.282; //60.96, 71.72,
+	_robot._mu_foot = 0.6;   // TO DO: get this value from robot model
+	_robot._I_com_body = Eigen::Matrix3d::Zero();
+	_robot._I_com_body.diagonal() << 1.5725937, 8.5015928, 9.1954911;
+	_robot._p_body2com = Eigen::Vector3d(0.056, 0.0215, 0.00358);
 
-  // Controllers
+	// Controllers
 	_virtual_spring_damper_controller.init();
-  _balance_controller.init();
-  _mpc_controller.init(_robot._m_body, _robot._p_body2com, _robot._I_com_body, _robot._mu_foot);
+	_balance_controller.init();
+	_mpc_controller.init();
+#ifdef MPC_Thread
+	_mpc_controller._start = false;
+	_mpc_controller._update = false;
+	_mpc_controller._step = 0;
+	_thread_mpc_controller = boost::thread(boost::bind(&MPCController::calControlInput, &_mpc_controller));
+#else
+	_mpc_controller._step = 0;
+#endif
 
-  // first controller
-  _robot.setController(4, quadruped_robot::controllers::VirtualSpringDamper);
-  for (size_t i=0; i<4; i++)
-    _robot._p_body2leg_d[i] = Vector3d(0,0,-0.4);
-	
+	// first controller
+	_robot.setController(4, quadruped_robot::controllers::VirtualSpringDamper);
+	for (size_t i = 0; i < 4; i++)
+		_robot._p_body2leg_d[i] = Vector3d(0, 0, -0.4);
+
 	return true;
 }
 
-void MainController::starting(const ros::Time& time)
+void MainController::starting(const ros::Time &time)
 {
 	_t = 0;
-	
+
 	ROS_INFO("Starting Leg Controller");
 }
 
-void MainController::subscribeCommand(const std_msgs::Float64MultiArrayConstPtr& msg)
+void MainController::subscribeCommand(const std_msgs::Float64MultiArrayConstPtr &msg)
 {
-	if(msg->data.size()!=_n_joints)
-	{ 
-    ROS_ERROR_STREAM("Dimension of command (" << msg->data.size() << ") does not match number of joints (" << _n_joints << ")! Not executing!");
-	return; 
+	if (msg->data.size() != _n_joints)
+	{
+		ROS_ERROR_STREAM("Dimension of command (" << msg->data.size() << ") does not match number of joints (" << _n_joints << ")! Not executing!");
+		return;
 	}
 	_commands_buffer.writeFromNonRT(msg->data);
 }
 
-void MainController::subscribeTrunkState(const gazebo_msgs::LinkStatesConstPtr& msg)
+void MainController::subscribeTrunkState(const gazebo_msgs::LinkStatesConstPtr &msg)
 {
 	Trunk trunk;
 
-	trunk._p = Eigen::Vector3d(msg->pose[1].position.x,	msg->pose[1].position.y, msg->pose[1].position.z);
+	trunk._p = Eigen::Vector3d(msg->pose[1].position.x, msg->pose[1].position.y, msg->pose[1].position.z);
 	trunk._v = Eigen::Vector3d(msg->twist[1].linear.x, msg->twist[1].linear.y, msg->twist[1].linear.z);
 	trunk._o = Eigen::Quaterniond(Eigen::Quaterniond(msg->pose[1].orientation.w,
-														msg->pose[1].orientation.x,
-														msg->pose[1].orientation.y,
-														msg->pose[1].orientation.z));
+													 msg->pose[1].orientation.x,
+													 msg->pose[1].orientation.y,
+													 msg->pose[1].orientation.z));
 	trunk._w = Eigen::Vector3d(msg->twist[1].angular.x,
-		msg->twist[1].angular.y, msg->twist[1].angular.z);
+							   msg->twist[1].angular.y, msg->twist[1].angular.z);
 
 	_trunk_state_buffer.writeFromNonRT(trunk);
 }
 
-void MainController::subscribeLFContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
+void MainController::subscribeLFContactState(const gazebo_msgs::ContactsStateConstPtr &msg)
 {
-  Eigen::Vector3d contact_force;
+	Eigen::Vector3d contact_force;
 
-  if (msg->states.size() > 0)
-    contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
+	if (msg->states.size() > 0)
+		contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
 
-  if (contact_force.norm() > 10)
-    _contact_states_buffer[0].writeFromNonRT(1);
-  else
-    _contact_states_buffer[0].writeFromNonRT(0);
+	if (contact_force.norm() > 10)
+		_contact_states_buffer[0].writeFromNonRT(1);
+	else
+		_contact_states_buffer[0].writeFromNonRT(0);
 }
 
-void MainController::subscribeRFContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
+void MainController::subscribeRFContactState(const gazebo_msgs::ContactsStateConstPtr &msg)
 {
-  Eigen::Vector3d contact_force;
+	Eigen::Vector3d contact_force;
 
-  if (msg->states.size() > 0)
-    contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
+	if (msg->states.size() > 0)
+		contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
 
-  if (contact_force.norm() > 10)
-    _contact_states_buffer[1].writeFromNonRT(1);
-  else
-    _contact_states_buffer[1].writeFromNonRT(0);
+	if (contact_force.norm() > 10)
+		_contact_states_buffer[1].writeFromNonRT(1);
+	else
+		_contact_states_buffer[1].writeFromNonRT(0);
 }
 
-void MainController::subscribeLHContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
+void MainController::subscribeLHContactState(const gazebo_msgs::ContactsStateConstPtr &msg)
 {
-  Eigen::Vector3d contact_force;
+	Eigen::Vector3d contact_force;
 
-  if (msg->states.size() > 0)
-    contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
+	if (msg->states.size() > 0)
+		contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
 
-  if (contact_force.norm() > 10)
-    _contact_states_buffer[2].writeFromNonRT(1);
-  else
-    _contact_states_buffer[2].writeFromNonRT(0);
-
+	if (contact_force.norm() > 10)
+		_contact_states_buffer[2].writeFromNonRT(1);
+	else
+		_contact_states_buffer[2].writeFromNonRT(0);
 }
 
-void MainController::subscribeRHContactState(const gazebo_msgs::ContactsStateConstPtr& msg)
+void MainController::subscribeRHContactState(const gazebo_msgs::ContactsStateConstPtr &msg)
 {
-  Eigen::Vector3d contact_force;
+	Eigen::Vector3d contact_force;
 
-  if (msg->states.size() > 0)
-    contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
+	if (msg->states.size() > 0)
+		contact_force << msg->states[0].total_wrench.force.x, msg->states[0].total_wrench.force.y, msg->states[0].total_wrench.force.z;
 
-  if (contact_force.norm() > 10)
-    _contact_states_buffer[3].writeFromNonRT(1);
-  else
-    _contact_states_buffer[3].writeFromNonRT(0);
+	if (contact_force.norm() > 10)
+		_contact_states_buffer[3].writeFromNonRT(1);
+	else
+		_contact_states_buffer[3].writeFromNonRT(0);
 }
 
-bool MainController::updateGain(UpdateGain::Request& request, UpdateGain::Response& response)
+bool MainController::updateGain(UpdateGain::Request &request, UpdateGain::Response &response)
 {
 	updateGain();
 }
@@ -272,10 +278,10 @@ bool MainController::updateGain()
 	return true;
 }
 
-bool MainController::srvMoveBodyCB(MoveBody::Request& request, MoveBody::Response& response)
+bool MainController::srvMoveBodyCB(MoveBody::Request &request, MoveBody::Response &response)
 {
 	// Eigen::Vector6d delta_pose = Map<Eigen::Vector6d>(request.delta_pose);
-	
+
 	// p_body_d = p_body_d + delta_pose.head(3) * MM2M;
 
 	// AngleAxisd request.delta_pose[3] * D2R;
@@ -283,18 +289,18 @@ bool MainController::srvMoveBodyCB(MoveBody::Request& request, MoveBody::Respons
 	// _minjerk_traj.setTrajInput(request.delta_pose, request.duration);
 }
 
-void MainController::update(const ros::Time& time, const ros::Duration& period)
+void MainController::update(const ros::Time &time, const ros::Duration &period)
 {
-  // Update from real-time buffer
-	std::vector<double> & commands = *_commands_buffer.readFromRT();
-	std::vector<double> & kp = *_gains_kp_buffer.readFromRT();
-	std::vector<double> & kd = *_gains_kd_buffer.readFromRT();
-	Trunk& trunk_state = *_trunk_state_buffer.readFromRT();
-  std::array<int, 4> contact_states;
+	// Update from real-time buffer
+	std::vector<double> &commands = *_commands_buffer.readFromRT();
+	std::vector<double> &kp = *_gains_kp_buffer.readFromRT();
+	std::vector<double> &kd = *_gains_kd_buffer.readFromRT();
+	Trunk &trunk_state = *_trunk_state_buffer.readFromRT();
+	std::array<int, 4> contact_states;
 
-
-  for (size_t i=0; i<4; i++)  {
-    contact_states[i] = *_contact_states_buffer[i].readFromRT();
+	for (size_t i = 0; i < 4; i++)
+	{
+		contact_states[i] = *_contact_states_buffer[i].readFromRT();
 	}
 
 	double dt = period.toSec();
@@ -306,152 +312,151 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 	{
 		if (i < 3)
 		{
-      q_leg[0](i) = _joints[i].getPosition();
+			q_leg[0](i) = _joints[i].getPosition();
 			qdot_leg[0](i) = _joints[i].getVelocity();
 		}
 		else if (i < 6)
 		{
-      q_leg[1](i-3) = _joints[i].getPosition();
-			qdot_leg[1](i-3) = _joints[i].getVelocity();
+			q_leg[1](i - 3) = _joints[i].getPosition();
+			qdot_leg[1](i - 3) = _joints[i].getVelocity();
 		}
 		else if (i < 9)
 		{
-      q_leg[2](i-6) = _joints[i].getPosition();
-			qdot_leg[2](i-6) = _joints[i].getVelocity();
+			q_leg[2](i - 6) = _joints[i].getPosition();
+			qdot_leg[2](i - 6) = _joints[i].getVelocity();
 		}
 		else
 		{
-      q_leg[3](i-9) = _joints[i].getPosition();
-			qdot_leg[3](i-9) = _joints[i].getVelocity();
+			q_leg[3](i - 9) = _joints[i].getPosition();
+			qdot_leg[3](i - 9) = _joints[i].getVelocity();
 		}
 	}
 
-  // Sensor Data - continuosly update, subscribe from gazebo for now, @TODO: get this as raw sensor data
-  _robot.updateSensorData(q_leg, qdot_leg, Pose(trunk_state._p, trunk_state._o), PoseVel(trunk_state._v, trunk_state._w), contact_states);
+	// Sensor Data - continuosly update, subscribe from gazebo for now, @TODO: get this as raw sensor data
+	_robot.updateSensorData(q_leg, qdot_leg, Pose(trunk_state._p, trunk_state._o), PoseVel(trunk_state._v, trunk_state._w), contact_states);
 
-  // @TODO: State Estimation, For now, use gazebo data
-  //  _state_estimation.update(_robot);
+	// @TODO: State Estimation, For now, use gazebo data
+	//  _state_estimation.update(_robot);
 
-  // @TODO: Trajectory Generation, update trajectory - get from this initial state(temporary)
-  // _trajectory_generator.update(_robot);
-
+	// @TODO: Trajectory Generation, update trajectory - get from this initial state(temporary)
+	// _trajectory_generator.update(_robot);
+#ifdef MPC_Debugging
 	static int td = 0;
 	if (td++ == 5000)
 	{
-    _robot._pose_body_d._pos = _robot._pose_body._pos;
-    _robot._pose_body_d._pos(2) += 100*MM2M;
-    _robot.setController(4, quadruped_robot::controllers::BalancingQP);
+		_robot._pose_com_d._pos = _robot._pose_com._pos;
+		_robot._pose_body_d._pos = _robot._pose_body._pos;
+		_robot._pose_body_d._rot_quat = _robot._pose_body._rot_quat;
+		_robot._p_world2leg_d = _robot._p_world2leg;
 
-    ROS_INFO("Change Controller from virtual spring damper to qp balance");
+		_robot.setController(4, quadruped_robot::controllers::BalancingMPC);
+		ROS_INFO("Change Controller from virtual spring damper to MPC Controller");
+
+		_robot._pose_vel_com_d._linear.setZero();
+		_robot._pose_vel_body_d._angular.setZero();
+	}
+#else
+	static int td = 0;
+	if (td++ == 5000)
+	{
+		_robot._pose_body_d._pos = _robot._pose_body._pos;
+		_robot._pose_body_d._pos(2) += 100 * MM2M;
+		_robot.setController(4, quadruped_robot::controllers::BalancingQP);
+
+		ROS_INFO("Change Controller from virtual spring damper to qp balance");
 	}
 
-  if (td == 10000)
-  {
-    _robot._pose_body_d._pos(0) -= 100*MM2M;
-    _robot._pose_body_d._pos(1) -= 100*MM2M;
-    _robot.setController(4, quadruped_robot::controllers::BalancingQP);
+	if (td == 10000)
+	{
+		_robot._pose_body_d._pos(0) -= 100 * MM2M;
+		_robot._pose_body_d._pos(1) -= 100 * MM2M;
+		_robot.setController(4, quadruped_robot::controllers::BalancingQP);
 
-    ROS_INFO("Change Controller from virtual spring damper to qp balance");
-  }
+		ROS_INFO("Change Controller from virtual spring damper to qp balance");
+	}
 
-  if (td == 15000)
-  {
-    _robot._p_body2leg_d[0](2) = -0.2;
-    ROS_INFO("Change Controller to 3 leg balancing mode.");
-    _robot.setController(0, quadruped_robot::controllers::VirtualSpringDamper);
-    _robot.setController(1, quadruped_robot::controllers::BalancingQP);
-    _robot.setController(2, quadruped_robot::controllers::BalancingQP);
-    _robot.setController(3, quadruped_robot::controllers::BalancingQP);
-  }
+	if (td == 15000)
+	{
+		_robot._p_body2leg_d[0](2) = -0.2;
+		ROS_INFO("Change Controller to 3 leg balancing mode.");
+		_robot.setController(0, quadruped_robot::controllers::VirtualSpringDamper);
+		_robot.setController(1, quadruped_robot::controllers::BalancingQP);
+		_robot.setController(2, quadruped_robot::controllers::BalancingQP);
+		_robot.setController(3, quadruped_robot::controllers::BalancingQP);
+	}
 
-  _robot._pose_body_d._rot_quat.setIdentity();
-  _robot._pose_vel_body_d._angular.setZero();
+	_robot._pose_body_d._rot_quat.setIdentity();
+	_robot._pose_vel_body_d._angular.setZero();
+#endif
 
-  // Kinematics, Dynamics
-  _robot.calKinematicsDynamics();
+	// Kinematics, Dynamics
+	_robot.calKinematicsDynamics();
+	_virtual_spring_damper_controller.update(_robot, _F_leg);
 
 #ifdef MPC_Debugging
 
-	static int count=0;
-	count++;
-
-	static int count_p = 0;
-	count_p++;
-
-	if(count < 5000)
+	if (_robot.getController(0) == quadruped_robot::controllers::BalancingMPC)
 	{
-		if(count_p>100)
+#ifdef MPC_Thread
+		_mpc_controller._start = true;
+
+		if (_mpc_controller._step++ == MPC_Step)
 		{
-			printf("############ Running Vitual Spring Damper Controller\n");
-			count_p = 0;
+			_mpc_controller._step = 0;
+			_mpc_controller.setControlData(_robot);
+			_mpc_controller.getControlInput(_robot, _F_leg);
+			_mpc_controller._update = true;
 		}
-
-    _virtual_spring_damper_controller.setControlInput(_p_leg,_v_leg,_G_leg);
-		_virtual_spring_damper_controller.compute();
-		_virtual_spring_damper_controller.getControlOutput(_F_leg);
-
-		p_body_d = p_body;
-		p_body_dot_d = p_body_dot;
-		R_body_d = R_body;
-		w_body_d = w_body;
-		_p_leg_d = _p_leg;
-	}
-	else
-	{
-		if(count_p>100)
+#else
+		if (_mpc_controller._step++ == MPC_Step)
 		{
-			printf("############ Running MPC Controller\n");
-			count_p = 0;
+			_mpc_controller._step = 0;
+			_mpc_controller.setControlData(_robot);
+			_mpc_controller.calControlInput();
+			_mpc_controller.getControlInput(_robot, _F_leg);
 		}
-
-		_mpc_controller.setControlInput(p_body_d, p_body_dot_d, R_body_d, w_body_d, _p_leg_d,
-										p_body, p_body_dot, R_body, w_body, _p_leg);
-		_mpc_controller.update();
-		_mpc_controller.getControlOutput(_F_leg_balance);
-		_F_leg = _F_leg_balance;
-
-		print_state();
+#endif
 	}
 
 #else
-  _virtual_spring_damper_controller.update(_robot, _F_leg);
-  _balance_controller.update(_robot, _F_leg);
+	_balance_controller.update(_robot, _F_leg);
 #endif
 
-  // Convert force to torque
-	for (size_t i=0; i<4; i++)	{
-    _tau_leg[i] = _robot._Jv_leg[i].transpose() * _F_leg[i];
+	// Convert force to torque
+	for (size_t i = 0; i < 4; i++)
+	{
+		_tau_leg[i] = _robot._Jv_leg[i].transpose() * _F_leg[i];
 	}
 
 	// torque command
-	for(int i=0; i<_n_joints; i++)
+	for (int i = 0; i < _n_joints; i++)
 	{
 		if (i < 3)
 			_tau_d(i) = _tau_leg[0](i);
 		else if (i < 6)
-			_tau_d(i) = _tau_leg[1](i-3);
+			_tau_d(i) = _tau_leg[1](i - 3);
 		else if (i < 9)
-			_tau_d(i) = _tau_leg[2](i-6);
+			_tau_d(i) = _tau_leg[2](i - 6);
 		else
-			_tau_d(i) = _tau_leg[3](i-9);
+			_tau_d(i) = _tau_leg[3](i - 9);
 	}
 
-	for(int i=0; i<_n_joints; i++)
+	for (int i = 0; i < _n_joints; i++)
 	{
 		// effort saturation
-    if (_tau_d(i) >= _joint_urdfs[i]->limits->effort)
-    {
-//       ROS_INFO("effort saturation + %d", i);
-      _tau_d(i) = _joint_urdfs[i]->limits->effort;
-    }
-		
-    if (_tau_d(i) <= -_joint_urdfs[i]->limits->effort)
-    {
-//      ROS_INFO("effort saturation - %d", i);
-      _tau_d(i) = -_joint_urdfs[i]->limits->effort;
-    }
+		if (_tau_d(i) >= _joint_urdfs[i]->limits->effort)
+		{
+			//       ROS_INFO("effort saturation + %d", i);
+			_tau_d(i) = _joint_urdfs[i]->limits->effort;
+		}
 
-		_joints[i].setCommand( _tau_d(i) );
+		if (_tau_d(i) <= -_joint_urdfs[i]->limits->effort)
+		{
+			//      ROS_INFO("effort saturation - %d", i);
+			_tau_d(i) = -_joint_urdfs[i]->limits->effort;
+		}
+
+		_joints[i].setCommand(_tau_d(i));
 	}
 
 	// publish
@@ -460,33 +465,33 @@ void MainController::update(const ros::Time& time, const ros::Duration& period)
 		if (_controller_state_pub->trylock())
 		{
 			_controller_state_pub->msg_.header.stamp = time;
-			for(int i=0; i<_n_joints; i++)
+			for (int i = 0; i < _n_joints; i++)
 			{
-//				_controller_state_pub->msg_.command[i] = R2D*_q_d(i);
-//				_controller_state_pub->msg_.command_dot[i] = R2D*_qdot_d(i);
-//				_controller_state_pub->msg_.state[i] = R2D*_q(i);
-//				_controller_state_pub->msg_.state_dot[i] = R2D*_qdot(i);
-//				_controller_state_pub->msg_.q_error[i] = R2D*_q_error(i);
-//				_controller_state_pub->msg_.qdot_error[i] = R2D*_qdot_error(i);
+				//				_controller_state_pub->msg_.command[i] = R2D*_q_d(i);
+				//				_controller_state_pub->msg_.command_dot[i] = R2D*_qdot_d(i);
+				//				_controller_state_pub->msg_.state[i] = R2D*_q(i);
+				//				_controller_state_pub->msg_.state_dot[i] = R2D*_qdot(i);
+				//				_controller_state_pub->msg_.q_error[i] = R2D*_q_error(i);
+				//				_controller_state_pub->msg_.qdot_error[i] = R2D*_qdot_error(i);
 				// FIXME. temporarily
 				// _controller_state_pub->msg_.effort_command[i] = _tau_d(i);
 				// _controller_state_pub->msg_.effort_feedback[i] = _tau_d(i) - _controller_state_pub->msg_.effort_feedforward[i];
 			}
 
-			for(int i=0; i<4; i++)
+			for (int i = 0; i < 4; i++)
 			{
-				for(int j=0; j<3; j++)
+				for (int j = 0; j < 3; j++)
 				{
-					_controller_state_pub->msg_.effort_command[i*3+j] = _F_leg[i](j);
-					_controller_state_pub->msg_.effort_feedback[i*3+j] = _F_leg_balance[i](j);
+					_controller_state_pub->msg_.effort_command[i * 3 + j] = _F_leg[i](j);
+					_controller_state_pub->msg_.effort_feedback[i * 3 + j] = _F_leg_balance[i](j);
 				}
 			}
 			_controller_state_pub->unlockAndPublish();
 		}
 	}
 
-    // ********* printf state *********
-  //printState();
+	// ********* printf state *********
+	//printState();
 }
 
 void MainController::enforceJointLimits(double &command, unsigned int index)
@@ -695,4 +700,3 @@ void MainController::printState()
 
 } // namespace legged_controllers
 PLUGINLIB_EXPORT_CLASS(legged_controllers::MainController, controller_interface::ControllerBase)
-
