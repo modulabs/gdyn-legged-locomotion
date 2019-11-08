@@ -3,6 +3,7 @@
 #include <utility/math_func.h>
 #include <array>
 #include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
 
 // ros
 #include <ros/console.h>
