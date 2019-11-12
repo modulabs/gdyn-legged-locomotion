@@ -10,8 +10,8 @@ using Eigen::Quaterniond;
 using Eigen::AngleAxisd;
 
 //#define PI (3.141592)
-#define R2D (180/PI)
-#define D2R (PI/180)
+#define R2D (180/M_PI)
+#define D2R (M_PI/180)
 #define M2MM (1000)
 #define MM2M (0.001)
 

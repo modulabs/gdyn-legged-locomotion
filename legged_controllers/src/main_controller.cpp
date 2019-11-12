@@ -360,32 +360,100 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 	if (td++ == 5000)
 	{
 		_robot._pose_body_d._pos = _robot._pose_body._pos;
-		_robot._pose_body_d._pos(2) += 100 * MM2M;
+    _robot._pose_body_d._rot_quat.setIdentity();
+    _robot._pose_body_d._pos(2) += 300 * MM2M;
 		_robot.setController(4, quadruped_robot::controllers::BalancingQP);
 
 		ROS_INFO("Change Controller from virtual spring damper to qp balance");
 	}
 
-	if (td == 10000)
-	{
-		_robot._pose_body_d._pos(0) -= 100 * MM2M;
-		_robot._pose_body_d._pos(1) -= 100 * MM2M;
-		_robot.setController(4, quadruped_robot::controllers::BalancingQP);
+#define TUNING_BALANCE_QP
+#ifdef TUNING_BALANCE_QP
+  if (td == 6000)
+  {
+    _robot._pose_body_d._pos(2) -= 200 * MM2M;
+  }
 
-		ROS_INFO("Change Controller from virtual spring damper to qp balance");
-	}
+  if (td == 7000)
+  {
+    _robot._pose_body_d._pos(0) += 200 * MM2M;
+  }
 
-	if (td == 15000)
-	{
-		_robot._p_body2leg_d[0](2) = -0.2;
-		ROS_INFO("Change Controller to 3 leg balancing mode.");
-		_robot.setController(0, quadruped_robot::controllers::VirtualSpringDamper);
-		_robot.setController(1, quadruped_robot::controllers::BalancingQP);
-		_robot.setController(2, quadruped_robot::controllers::BalancingQP);
-		_robot.setController(3, quadruped_robot::controllers::BalancingQP);
-	}
+  if (td == 8000)
+  {
+    _robot._pose_body_d._pos(0) -= 200 * MM2M;
+  }
 
-	_robot._pose_body_d._rot_quat.setIdentity();
+//  if (td == 9000)
+//  {
+//    _robot._pose_body_d._pos(1) += 50 * MM2M;
+//  }
+
+//  if (td == 10000)
+//  {
+//    _robot._pose_body_d._pos(1) -= 50 * MM2M;
+//  }
+
+  if (td == 9000)
+  {
+    _robot._pose_body_d._rot_quat = AngleAxisd(25*D2R, Vector3d::UnitZ()) * _robot._pose_body_d._rot_quat;
+  }
+
+  if (td == 10000)
+  {
+    _robot._pose_body_d._rot_quat = AngleAxisd(-25*D2R, Vector3d::UnitZ()) * _robot._pose_body_d._rot_quat;
+  }
+
+  if (td == 11000)
+  {
+    _robot._pose_body_d._rot_quat = AngleAxisd(20*D2R, Vector3d::UnitX()) * _robot._pose_body_d._rot_quat;
+  }
+
+  if (td == 12000)
+  {
+    _robot._pose_body_d._rot_quat = AngleAxisd(-20*D2R, Vector3d::UnitX()) * _robot._pose_body_d._rot_quat;
+  }
+
+  if (td == 13000)
+  {
+    _robot._pose_body_d._rot_quat = AngleAxisd(20*D2R, Vector3d::UnitY()) * _robot._pose_body_d._rot_quat;
+  }
+
+  if (td == 14000)
+  {
+    _robot._pose_body_d._rot_quat = AngleAxisd(-20*D2R, Vector3d::UnitY()) * _robot._pose_body_d._rot_quat;
+  }
+
+#endif
+
+#ifdef TUNING_BALANCE_QP
+  if (td == 15000)
+#else
+  if (td == 6000)
+#endif
+  {
+    _robot._pose_body_d._pos(0) -= 100 * MM2M;
+    _robot._pose_body_d._pos(1) -= 50 * MM2M;
+    _robot.setController(4, quadruped_robot::controllers::BalancingQP);
+
+  }
+
+#ifdef TUNING_BALANCE_QP
+  if (td == 15500)
+#else
+  if (td == 6500)
+#endif
+  {
+    _robot._p_body2leg_d[0](2) = -0.2;
+
+    ROS_INFO("Change Controller to 3 leg balancing mode.");
+    _robot.setController(0, quadruped_robot::controllers::VirtualSpringDamper);
+    _robot.setController(1, quadruped_robot::controllers::BalancingQP);
+    _robot.setController(2, quadruped_robot::controllers::BalancingQP);
+    _robot.setController(3, quadruped_robot::controllers::BalancingQP);
+  }
+
+//	_robot._pose_body_d._rot_quat.setIdentity();
 	_robot._pose_vel_body_d._angular.setZero();
 #endif
 
