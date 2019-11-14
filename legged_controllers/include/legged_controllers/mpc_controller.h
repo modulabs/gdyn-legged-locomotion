@@ -5,12 +5,13 @@
 #include <iostream>
 using namespace std;
 
-#undef MPC_Debugging
-#undef MPC_Thread
+#define MPC_Debugging
+//#define MPC_Thread
 
 #include <array>
 #include <utility/math_func.h>
 #include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
 
 // kdl
 #include <kdl/tree.hpp>
@@ -24,45 +25,49 @@ using namespace std;
 
 // Information of quadruped robot's kinematics, dynamics and sensor data
 #include <legged_robot/quadruped_robot.h>
-
+/*
 #define SamplingTime 0.001
 #define MPC_Step 3
+#define Control_Step 3
 
-/*
-#define L_00_gain 100.0
-#define L_11_gain_x 1000.0
-#define L_11_gain_y 1000.0
-#define L_11_gain_z 4000.0
-#define L_22_gain_wx 100.0
-#define L_22_gain_wy 100.0
-#define L_22_gain_wz 100.0
-#define L_33_gain_vx 100.0
-#define L_33_gain_vy 100.0
-#define L_33_gain_vz 100.0
+#define L_00_gain 1.0
+#define L_11_gain_x 1.0
+#define L_11_gain_y 1.0
+#define L_11_gain_z 1.0
+#define L_22_gain_wx 1.0
+#define L_22_gain_wy 1.0
+#define L_22_gain_wz 1.0
+#define L_33_gain_vx 1.0
+#define L_33_gain_vy 1.0
+#define L_33_gain_vz 1.0
 #define L_44_gain 0.0
 
-#define K_00_gain 0.00000001
-#define K_11_gain 0.00000001
-#define K_22_gain 0.00000001
-#define K_33_gain 0.00000001
+#define K_00_gain 0.000000001
+#define K_11_gain 0.000000001
+#define K_22_gain 0.000000001
+#define K_33_gain 0.000000001
 */
 
-#define L_00_gain 100.0
-#define L_11_gain_x 1000.0
-#define L_11_gain_y 1000.0
-#define L_11_gain_z 4000.0
-#define L_22_gain_wx 100.0
-#define L_22_gain_wy 100.0
-#define L_22_gain_wz 100.0
-#define L_33_gain_vx 100.0
-#define L_33_gain_vy 100.0
-#define L_33_gain_vz 100.0
+#define SamplingTime 0.03
+#define MPC_Step 3
+#define Control_Step 12
+
+#define L_00_gain 1.0
+#define L_11_gain_x 1.0
+#define L_11_gain_y 1.0
+#define L_11_gain_z 1.0
+#define L_22_gain_wx 1.0
+#define L_22_gain_wy 1.0
+#define L_22_gain_wz 1.0
+#define L_33_gain_vx 1.0
+#define L_33_gain_vy 1.0
+#define L_33_gain_vz 1.0
 #define L_44_gain 0.0
 
-#define K_00_gain 0.0000001
-#define K_11_gain 0.0000001
-#define K_22_gain 0.0000001
-#define K_33_gain 0.0000001
+#define K_00_gain 0.000000000001
+#define K_11_gain 0.000000000001
+#define K_22_gain 0.000000000001
+#define K_33_gain 0.000000000001
 
 #define Force_min 10
 #define Force_max 666
@@ -79,12 +84,13 @@ class MPCController
     void setControlData(quadruped_robot::QuadrupedRobot &robot);
     void calControlInput();
     void getControlInput(quadruped_robot::QuadrupedRobot &robot, std::array<Eigen::Vector3d, 4> &F_leg);
-
+    void cal_A_d();
+    void cal_B_d_and_B_d_d();
   public:
     bool _start;
-    bool _update;
+    volatile bool _update;
     int _step;
-
+       
     // parameter
     double _m_body;
     Eigen::Matrix3d _I_com;
@@ -103,9 +109,12 @@ class MPCController
     Eigen::Matrix<double, 12, 1> _F;
 
     // Define Parameter For MPC Controller
-    Eigen::MatrixXd _A_c, _A_d, _B_c, _B_c_d, _B_d, _B_d_d;
+    Eigen::MatrixXd _A_d, _B_d, _B_d_d;
+    Eigen::MatrixXd _Rz, _Rz_d;
+    Eigen::MatrixXd _R1, _R2, _R3, _R4;
+    Eigen::MatrixXd _R1_d, _R2_d, _R3_d, _R4_d;
     Eigen::MatrixXd _I3x3, _I15x15;
-    Eigen::MatrixXd _I_hat;
+    Eigen::MatrixXd _I_hat, _I_hat_d;
     Eigen::MatrixXd _p_leg_1_skew, _p_leg_2_skew, _p_leg_3_skew, _p_leg_4_skew;
     Eigen::MatrixXd _p_leg_1_skew_d, _p_leg_2_skew_d, _p_leg_3_skew_d, _p_leg_4_skew_d;
     Eigen::MatrixXd _T15X15, _T12X12;

@@ -2,19 +2,24 @@
 
 void MPCController::init()
 {
-    _A_c = Eigen::MatrixXd::Zero(15, 15);
-    _A_d = Eigen::MatrixXd::Zero(15, 15);
+    _R1 = Eigen::MatrixXd::Zero(3, 3);
+    _R2 = Eigen::MatrixXd::Zero(3, 3);
+    _R3 = Eigen::MatrixXd::Zero(3, 3);
+    _R4 = Eigen::MatrixXd::Zero(3, 3);
 
-    _B_c = Eigen::MatrixXd::Zero(15, 12);
-    _B_c_d = Eigen::MatrixXd::Zero(15, 12);
+    _A_d = Eigen::MatrixXd::Zero(15, 15);
 
     _B_d = Eigen::MatrixXd::Zero(15, 12);
     _B_d_d = Eigen::MatrixXd::Zero(15, 12);
+
+    _Rz = Eigen::MatrixXd::Zero(3, 3);
+    _Rz_d = Eigen::MatrixXd::Zero(3, 3);
 
     _I3x3 = Eigen::MatrixXd::Identity(3, 3);
     _I15x15 = Eigen::MatrixXd::Identity(15, 15);
 
     _I_hat = Eigen::MatrixXd::Zero(3, 3);
+    _I_hat_d = Eigen::MatrixXd::Zero(3, 3);
 
     _p_leg_1_skew = Eigen::MatrixXd::Zero(3, 3);
     _p_leg_2_skew = Eigen::MatrixXd::Zero(3, 3);
@@ -86,58 +91,48 @@ void MPCController::calControlInput()
     {
         if ((_start) && (_update))
         {
-#endif            
+#endif
             // Continuous Simplified Robot Dynamics x_dot = A_c*x + B_c*u
 
+            Eigen::Matrix3d Rz, Rz_d;
+
             Eigen::Vector3d EulerAngle = _R_body.eulerAngles(2, 1, 0);
-            Eigen::Matrix3d Rz;
             Rz = AngleAxisd(EulerAngle(2), Vector3d::UnitZ());
 
             Eigen::Vector3d EulerAngle_d = _R_body_d.eulerAngles(2, 1, 0);
+            Rz_d = AngleAxisd(EulerAngle_d(2), Vector3d::UnitZ());
 
-            _A_c.block<3, 3>(0, 6) = Rz;
-            _A_c.block<3, 3>(3, 9) = _I3x3;
-            _A_c.block<3, 3>(9, 12) = -_I3x3;
+            _Rz = Rz;
+            _Rz_d = Rz_d;
 
             _I_hat = _I_com;
-
-            _I_hat = Rz * _I_hat * Rz.transpose();
+            _I_hat = _Rz * _I_hat * _Rz.transpose();
+            _I_hat_d = _Rz_d * _I_hat * _Rz_d.transpose();
 
             _p_leg_1_skew = skew(_p_leg[0] - _p_com);
             _p_leg_2_skew = skew(_p_leg[1] - _p_com);
             _p_leg_3_skew = skew(_p_leg[2] - _p_com);
             _p_leg_4_skew = skew(_p_leg[3] - _p_com);
 
-            _B_c.block<3, 3>(6, 0) = _I_hat.inverse() * _p_leg_1_skew;
-            _B_c.block<3, 3>(6, 3) = _I_hat.inverse() * _p_leg_2_skew;
-            _B_c.block<3, 3>(6, 6) = _I_hat.inverse() * _p_leg_3_skew;
-            _B_c.block<3, 3>(6, 9) = _I_hat.inverse() * _p_leg_4_skew;
-
-            _B_c.block<3, 3>(9, 0) = (1 / _m_body) * _I3x3;
-            _B_c.block<3, 3>(9, 3) = (1 / _m_body) * _I3x3;
-            _B_c.block<3, 3>(9, 6) = (1 / _m_body) * _I3x3;
-            _B_c.block<3, 3>(9, 9) = (1 / _m_body) * _I3x3;
+            _R1 = _I_hat.inverse() * _p_leg_1_skew;
+            _R2 = _I_hat.inverse() * _p_leg_2_skew;
+            _R3 = _I_hat.inverse() * _p_leg_3_skew;
+            _R4 = _I_hat.inverse() * _p_leg_4_skew;
 
             _p_leg_1_skew_d = skew(_p_leg_d[0] - _p_com_d);
             _p_leg_2_skew_d = skew(_p_leg_d[1] - _p_com_d);
             _p_leg_3_skew_d = skew(_p_leg_d[2] - _p_com_d);
             _p_leg_4_skew_d = skew(_p_leg_d[3] - _p_com_d);
 
-            _B_c_d.block<3, 3>(6, 0) = _I_hat.inverse() * _p_leg_1_skew_d;
-            _B_c_d.block<3, 3>(6, 3) = _I_hat.inverse() * _p_leg_2_skew_d;
-            _B_c_d.block<3, 3>(6, 6) = _I_hat.inverse() * _p_leg_3_skew_d;
-            _B_c_d.block<3, 3>(6, 9) = _I_hat.inverse() * _p_leg_4_skew_d;
-
-            _B_c_d.block<3, 3>(9, 0) = (1 / _m_body) * _I3x3;
-            _B_c_d.block<3, 3>(9, 3) = (1 / _m_body) * _I3x3;
-            _B_c_d.block<3, 3>(9, 6) = (1 / _m_body) * _I3x3;
-            _B_c_d.block<3, 3>(9, 9) = (1 / _m_body) * _I3x3;
+            _R1_d = _I_hat_d.inverse() * _p_leg_1_skew_d;
+            _R2_d = _I_hat_d.inverse() * _p_leg_2_skew_d;
+            _R3_d = _I_hat_d.inverse() * _p_leg_3_skew_d;
+            _R4_d = _I_hat_d.inverse() * _p_leg_4_skew_d;
 
             // Discrete Simplified Robot Dynamics x[k+1] = A_c*x[k] + B_c*u[k]
-
-            _A_d = _I15x15 + _A_c * (SamplingTime * _T15X15);
-            _B_d = _B_c * (SamplingTime * _T12X12);
-            _B_d_d = _B_c_d * (SamplingTime * _T12X12);
+            
+            cal_A_d();
+            cal_B_d_and_B_d_d();
 
             // Condensed QP formulation X = Aqp*x0 + Bqp*U
 
@@ -147,13 +142,13 @@ void MPCController::calControlInput()
 
             for (int i = 1; i <= MPC_Step; i++)
             {
-                _A_qp.block<15, 15>(15 * i, 0) = _Temp;
-                _Temp *= _A_d;
+                _A_qp.block<15, 15>(15*i, 0) = _Temp;
+                _Temp = _Temp*_A_d;
             }
 
             for (int i = 0; i < MPC_Step; i++)
             {
-                _Temp = _B_d;
+                _Temp = _B_d_d;
 
                 for (int j = (i + 1); j <= MPC_Step; j++)
                 {
@@ -163,7 +158,7 @@ void MPCController::calControlInput()
                 }
             }
 
-            //_B_qp.block<15, 12>(15 * 1, 12 * 0) = _B_d;
+            _B_qp.block<15, 12>(15 * 1, 12 * 0) = _B_d;
 
             _L_d.block<3, 3>(0, 0) = L_00_gain * _I3x3;
 
@@ -254,17 +249,10 @@ void MPCController::calControlInput()
             Vector3d e3Xe4 = e3.cross(e4);
             Vector3d e4Xe1 = e4.cross(e1);
 
-            // method 1
-            //_C_1leg << e1(0), e1(1), e1(2),
-            //           e2(0), e2(1), e2(2),
-            //           e3(0), e3(1), e3(2),
-            //           e4(0), e4(1), e4(2);
-
-            // method 2
-            _C_1leg << e1Xe2(0), e1Xe2(1), e1Xe2(2),
-                e2Xe3(0), e2Xe3(1), e2Xe3(2),
-                e3Xe4(0), e3Xe4(1), e3Xe4(2),
-                e4Xe1(0), e4Xe1(1), e4Xe1(2);
+            _C_1leg << e1(0), e1(1), e1(2),
+                       e2(0), e2(1), e2(2),
+                       e3(0), e3(1), e3(2),
+                       e4(0), e4(1), e4(2);
 
             for (int i = 0; i < 4; i++)
                 _C_4leg.block<4, 3>(4 * i, 0) = _C_1leg;
@@ -358,7 +346,7 @@ void MPCController::calControlInput()
             _F << UOpt[0], UOpt[1], UOpt[2],
                 UOpt[3], UOpt[4], UOpt[5],
                 UOpt[6], UOpt[7], UOpt[8],
-                UOpt[9], UOpt[10], UOpt[11];
+                UOpt[9], UOpt[10], UOpt[11];                                     
 #ifdef MPC_Thread 
             _update = false;
         }
@@ -375,4 +363,130 @@ void MPCController::getControlInput(quadruped_robot::QuadrupedRobot& robot, std:
             F_leg[i] = -_R_body.transpose() * _F.segment(3 * i, 3);
         }
     }
+}
+
+void MPCController::cal_A_d()
+{
+    _A_d = _I15x15;
+    _A_d.block<3, 3>(0, 6) = _Rz * SamplingTime;
+    _A_d.block<3, 3>(3, 9) = _I3x3 * SamplingTime;
+    _A_d.block<3, 3>(3, 12) = _I3x3 * (-1 / 2 * SamplingTime * SamplingTime);
+    _A_d.block<3, 3>(9, 12) = _I3x3 * (-SamplingTime);
+}
+
+void MPCController::cal_B_d_and_B_d_d()
+{
+    // Calculate _B_d
+
+    _B_d(0, 0) = 1 / 2 * (_R1(0, 0) * SamplingTime * SamplingTime * _Rz(0, 0) + _R1(1, 0) * SamplingTime * SamplingTime * _Rz(0, 1) + _R1(2, 0) * SamplingTime * SamplingTime * _Rz(0, 2));
+    _B_d(1, 0) = 1 / 2 * (_R1(0, 0) * SamplingTime * SamplingTime * _Rz(1, 0) + _R1(1, 0) * SamplingTime * SamplingTime * _Rz(1, 1) + _R1(2, 0) * SamplingTime * SamplingTime * _Rz(1, 2));
+    _B_d(2, 0) = 1 / 2 * (_R1(0, 0) * SamplingTime * SamplingTime * _Rz(2, 0) + _R1(1, 0) * SamplingTime * SamplingTime * _Rz(2, 1) + _R1(2, 0) * SamplingTime * SamplingTime * _Rz(2, 2));
+    _B_d(0, 1) = 1 / 2 * (_R1(0, 1) * SamplingTime * SamplingTime * _Rz(0, 0) + _R1(1, 1) * SamplingTime * SamplingTime * _Rz(0, 1) + _R1(2, 1) * SamplingTime * SamplingTime * _Rz(0, 2));
+    _B_d(1, 1) = 1 / 2 * (_R1(0, 1) * SamplingTime * SamplingTime * _Rz(1, 0) + _R1(1, 1) * SamplingTime * SamplingTime * _Rz(1, 1) + _R1(2, 1) * SamplingTime * SamplingTime * _Rz(1, 2));
+    _B_d(2, 1) = 1 / 2 * (_R1(0, 1) * SamplingTime * SamplingTime * _Rz(2, 0) + _R1(1, 1) * SamplingTime * SamplingTime * _Rz(2, 1) + _R1(2, 1) * SamplingTime * SamplingTime * _Rz(2, 2));
+    _B_d(0, 2) = 1 / 2 * (_R1(0, 2) * SamplingTime * SamplingTime * _Rz(0, 0) + _R1(1, 2) * SamplingTime * SamplingTime * _Rz(0, 1) + _R1(2, 2) * SamplingTime * SamplingTime * _Rz(0, 2));
+    _B_d(1, 2) = 1 / 2 * (_R1(0, 2) * SamplingTime * SamplingTime * _Rz(1, 0) + _R1(1, 2) * SamplingTime * SamplingTime * _Rz(1, 1) + _R1(2, 2) * SamplingTime * SamplingTime * _Rz(1, 2));
+    _B_d(2, 2) = 1 / 2 * (_R1(0, 2) * SamplingTime * SamplingTime * _Rz(2, 0) + _R1(1, 2) * SamplingTime * SamplingTime * _Rz(2, 1) + _R1(2, 2) * SamplingTime * SamplingTime * _Rz(2, 2));
+
+    _B_d(0, 3) = 1 / 2 * (_R2(0, 0) * SamplingTime * SamplingTime * _Rz(0, 0) + _R2(1, 0) * SamplingTime * SamplingTime * _Rz(0, 1) + _R2(2, 0) * SamplingTime * SamplingTime * _Rz(0, 2));
+    _B_d(1, 3) = 1 / 2 * (_R2(0, 0) * SamplingTime * SamplingTime * _Rz(1, 0) + _R2(1, 0) * SamplingTime * SamplingTime * _Rz(1, 1) + _R2(2, 0) * SamplingTime * SamplingTime * _Rz(1, 2));
+    _B_d(2, 3) = 1 / 2 * (_R2(0, 0) * SamplingTime * SamplingTime * _Rz(2, 0) + _R2(1, 0) * SamplingTime * SamplingTime * _Rz(2, 1) + _R2(2, 0) * SamplingTime * SamplingTime * _Rz(2, 2));
+    _B_d(0, 4) = 1 / 2 * (_R2(0, 1) * SamplingTime * SamplingTime * _Rz(0, 0) + _R2(1, 1) * SamplingTime * SamplingTime * _Rz(0, 1) + _R2(2, 1) * SamplingTime * SamplingTime * _Rz(0, 2));
+    _B_d(1, 4) = 1 / 2 * (_R2(0, 1) * SamplingTime * SamplingTime * _Rz(1, 0) + _R2(1, 1) * SamplingTime * SamplingTime * _Rz(1, 1) + _R2(2, 1) * SamplingTime * SamplingTime * _Rz(1, 2));
+    _B_d(2, 4) = 1 / 2 * (_R2(0, 1) * SamplingTime * SamplingTime * _Rz(2, 0) + _R2(1, 1) * SamplingTime * SamplingTime * _Rz(2, 1) + _R2(2, 1) * SamplingTime * SamplingTime * _Rz(2, 2));
+    _B_d(0, 5) = 1 / 2 * (_R2(0, 2) * SamplingTime * SamplingTime * _Rz(0, 0) + _R2(1, 2) * SamplingTime * SamplingTime * _Rz(0, 1) + _R2(2, 2) * SamplingTime * SamplingTime * _Rz(0, 2));
+    _B_d(1, 5) = 1 / 2 * (_R2(0, 2) * SamplingTime * SamplingTime * _Rz(1, 0) + _R2(1, 2) * SamplingTime * SamplingTime * _Rz(1, 1) + _R2(2, 2) * SamplingTime * SamplingTime * _Rz(1, 2));
+    _B_d(2, 5) = 1 / 2 * (_R2(0, 2) * SamplingTime * SamplingTime * _Rz(2, 0) + _R2(1, 2) * SamplingTime * SamplingTime * _Rz(2, 1) + _R2(2, 2) * SamplingTime * SamplingTime * _Rz(2, 2));
+
+    _B_d(0, 6) = 1 / 2 * (_R3(0, 0) * SamplingTime * SamplingTime * _Rz(0, 0) + _R3(1, 0) * SamplingTime * SamplingTime * _Rz(0, 1) + _R3(2, 0) * SamplingTime * SamplingTime * _Rz(0, 2));
+    _B_d(1, 6) = 1 / 2 * (_R3(0, 0) * SamplingTime * SamplingTime * _Rz(1, 0) + _R3(1, 0) * SamplingTime * SamplingTime * _Rz(1, 1) + _R3(2, 0) * SamplingTime * SamplingTime * _Rz(1, 2));
+    _B_d(2, 6) = 1 / 2 * (_R3(0, 0) * SamplingTime * SamplingTime * _Rz(2, 0) + _R3(1, 0) * SamplingTime * SamplingTime * _Rz(2, 1) + _R3(2, 0) * SamplingTime * SamplingTime * _Rz(2, 2));
+    _B_d(0, 7) = 1 / 2 * (_R3(0, 1) * SamplingTime * SamplingTime * _Rz(0, 0) + _R3(1, 1) * SamplingTime * SamplingTime * _Rz(0, 1) + _R3(2, 1) * SamplingTime * SamplingTime * _Rz(0, 2));
+    _B_d(1, 7) = 1 / 2 * (_R3(0, 1) * SamplingTime * SamplingTime * _Rz(1, 0) + _R3(1, 1) * SamplingTime * SamplingTime * _Rz(1, 1) + _R3(2, 1) * SamplingTime * SamplingTime * _Rz(1, 2));
+    _B_d(2, 7) = 1 / 2 * (_R3(0, 1) * SamplingTime * SamplingTime * _Rz(2, 0) + _R3(1, 1) * SamplingTime * SamplingTime * _Rz(2, 1) + _R3(2, 1) * SamplingTime * SamplingTime * _Rz(2, 2));
+    _B_d(0, 8) = 1 / 2 * (_R3(0, 2) * SamplingTime * SamplingTime * _Rz(0, 0) + _R3(1, 2) * SamplingTime * SamplingTime * _Rz(0, 1) + _R3(2, 2) * SamplingTime * SamplingTime * _Rz(0, 2));
+    _B_d(1, 8) = 1 / 2 * (_R3(0, 2) * SamplingTime * SamplingTime * _Rz(1, 0) + _R3(1, 2) * SamplingTime * SamplingTime * _Rz(1, 1) + _R3(2, 2) * SamplingTime * SamplingTime * _Rz(1, 2));
+    _B_d(2, 8) = 1 / 2 * (_R3(0, 2) * SamplingTime * SamplingTime * _Rz(2, 0) + _R3(1, 2) * SamplingTime * SamplingTime * _Rz(2, 1) + _R3(2, 2) * SamplingTime * SamplingTime * _Rz(2, 2));
+
+    _B_d(0, 9) = 1 / 2 * (_R4(0, 0) * SamplingTime * SamplingTime * _Rz(0, 0) + _R4(1, 0) * SamplingTime * SamplingTime * _Rz(0, 1) + _R4(2, 0) * SamplingTime * SamplingTime * _Rz(0, 2));
+    _B_d(1, 9) = 1 / 2 * (_R4(0, 0) * SamplingTime * SamplingTime * _Rz(1, 0) + _R4(1, 0) * SamplingTime * SamplingTime * _Rz(1, 1) + _R4(2, 0) * SamplingTime * SamplingTime * _Rz(1, 2));
+    _B_d(2, 9) = 1 / 2 * (_R4(0, 0) * SamplingTime * SamplingTime * _Rz(2, 0) + _R4(1, 0) * SamplingTime * SamplingTime * _Rz(2, 1) + _R4(2, 0) * SamplingTime * SamplingTime * _Rz(2, 2));
+    _B_d(0, 10) = 1 / 2 * (_R4(0, 1) * SamplingTime * SamplingTime * _Rz(0, 0) + _R4(1, 1) * SamplingTime * SamplingTime * _Rz(0, 1) + _R4(2, 1) * SamplingTime * SamplingTime * _Rz(0, 2));
+    _B_d(1, 10) = 1 / 2 * (_R4(0, 1) * SamplingTime * SamplingTime * _Rz(1, 0) + _R4(1, 1) * SamplingTime * SamplingTime * _Rz(1, 1) + _R4(2, 1) * SamplingTime * SamplingTime * _Rz(1, 2));
+    _B_d(2, 10) = 1 / 2 * (_R4(0, 1) * SamplingTime * SamplingTime * _Rz(2, 0) + _R4(1, 1) * SamplingTime * SamplingTime * _Rz(2, 1) + _R4(2, 1) * SamplingTime * SamplingTime * _Rz(2, 2));
+    _B_d(0, 11) = 1 / 2 * (_R4(0, 2) * SamplingTime * SamplingTime * _Rz(0, 0) + _R4(1, 2) * SamplingTime * SamplingTime * _Rz(0, 1) + _R4(2, 2) * SamplingTime * SamplingTime * _Rz(0, 2));
+    _B_d(1, 11) = 1 / 2 * (_R4(0, 2) * SamplingTime * SamplingTime * _Rz(1, 0) + _R4(1, 2) * SamplingTime * SamplingTime * _Rz(1, 1) + _R4(2, 2) * SamplingTime * SamplingTime * _Rz(1, 2));
+    _B_d(2, 11) = 1 / 2 * (_R4(0, 2) * SamplingTime * SamplingTime * _Rz(2, 0) + _R4(1, 2) * SamplingTime * SamplingTime * _Rz(2, 1) + _R4(2, 2) * SamplingTime * SamplingTime * _Rz(2, 2));
+
+    _B_d.block<3, 3>(3, 0) = _I3x3*(SamplingTime*SamplingTime/(2*_m_body));
+    _B_d.block<3, 3>(3, 3) = _I3x3*(SamplingTime*SamplingTime/(2*_m_body));
+    _B_d.block<3, 3>(3, 6) = _I3x3*(SamplingTime*SamplingTime/(2*_m_body));
+    _B_d.block<3, 3>(3, 9) = _I3x3*(SamplingTime*SamplingTime/(2*_m_body));
+
+    _B_d.block<3, 3>(6, 0) = _R1*SamplingTime;
+    _B_d.block<3, 3>(6, 3) = _R2*SamplingTime;
+    _B_d.block<3, 3>(6, 6) = _R3*SamplingTime;
+    _B_d.block<3, 3>(6, 9) = _R4*SamplingTime;
+
+    _B_d.block<3, 3>(9, 0) = _I3x3*(SamplingTime/_m_body);
+    _B_d.block<3, 3>(9, 3) = _I3x3*(SamplingTime/_m_body);
+    _B_d.block<3, 3>(9, 6) = _I3x3*(SamplingTime/_m_body);
+    _B_d.block<3, 3>(9, 9) = _I3x3*(SamplingTime/_m_body);
+
+    // Calculate _B_d_d
+
+    _B_d_d(0, 0) = 1 / 2 * (_R1_d(0, 0) * SamplingTime * SamplingTime * _Rz_d(0, 0) + _R1_d(1, 0) * SamplingTime * SamplingTime * _Rz_d(0, 1) + _R1_d(2, 0) * SamplingTime * SamplingTime * _Rz_d(0, 2));
+    _B_d_d(1, 0) = 1 / 2 * (_R1_d(0, 0) * SamplingTime * SamplingTime * _Rz_d(1, 0) + _R1_d(1, 0) * SamplingTime * SamplingTime * _Rz_d(1, 1) + _R1_d(2, 0) * SamplingTime * SamplingTime * _Rz_d(1, 2));
+    _B_d_d(2, 0) = 1 / 2 * (_R1_d(0, 0) * SamplingTime * SamplingTime * _Rz_d(2, 0) + _R1_d(1, 0) * SamplingTime * SamplingTime * _Rz_d(2, 1) + _R1_d(2, 0) * SamplingTime * SamplingTime * _Rz_d(2, 2));
+    _B_d_d(0, 1) = 1 / 2 * (_R1_d(0, 1) * SamplingTime * SamplingTime * _Rz_d(0, 0) + _R1_d(1, 1) * SamplingTime * SamplingTime * _Rz_d(0, 1) + _R1_d(2, 1) * SamplingTime * SamplingTime * _Rz_d(0, 2));
+    _B_d_d(1, 1) = 1 / 2 * (_R1_d(0, 1) * SamplingTime * SamplingTime * _Rz_d(1, 0) + _R1_d(1, 1) * SamplingTime * SamplingTime * _Rz_d(1, 1) + _R1_d(2, 1) * SamplingTime * SamplingTime * _Rz_d(1, 2));
+    _B_d_d(2, 1) = 1 / 2 * (_R1_d(0, 1) * SamplingTime * SamplingTime * _Rz_d(2, 0) + _R1_d(1, 1) * SamplingTime * SamplingTime * _Rz_d(2, 1) + _R1_d(2, 1) * SamplingTime * SamplingTime * _Rz_d(2, 2));
+    _B_d_d(0, 2) = 1 / 2 * (_R1_d(0, 2) * SamplingTime * SamplingTime * _Rz_d(0, 0) + _R1_d(1, 2) * SamplingTime * SamplingTime * _Rz_d(0, 1) + _R1_d(2, 2) * SamplingTime * SamplingTime * _Rz_d(0, 2));
+    _B_d_d(1, 2) = 1 / 2 * (_R1_d(0, 2) * SamplingTime * SamplingTime * _Rz_d(1, 0) + _R1_d(1, 2) * SamplingTime * SamplingTime * _Rz_d(1, 1) + _R1_d(2, 2) * SamplingTime * SamplingTime * _Rz_d(1, 2));
+    _B_d_d(2, 2) = 1 / 2 * (_R1_d(0, 2) * SamplingTime * SamplingTime * _Rz_d(2, 0) + _R1_d(1, 2) * SamplingTime * SamplingTime * _Rz_d(2, 1) + _R1_d(2, 2) * SamplingTime * SamplingTime * _Rz_d(2, 2));
+
+    _B_d_d(0, 3) = 1 / 2 * (_R2_d(0, 0) * SamplingTime * SamplingTime * _Rz_d(0, 0) + _R2_d(1, 0) * SamplingTime * SamplingTime * _Rz_d(0, 1) + _R2_d(2, 0) * SamplingTime * SamplingTime * _Rz_d(0, 2));
+    _B_d_d(1, 3) = 1 / 2 * (_R2_d(0, 0) * SamplingTime * SamplingTime * _Rz_d(1, 0) + _R2_d(1, 0) * SamplingTime * SamplingTime * _Rz_d(1, 1) + _R2_d(2, 0) * SamplingTime * SamplingTime * _Rz_d(1, 2));
+    _B_d_d(2, 3) = 1 / 2 * (_R2_d(0, 0) * SamplingTime * SamplingTime * _Rz_d(2, 0) + _R2_d(1, 0) * SamplingTime * SamplingTime * _Rz_d(2, 1) + _R2_d(2, 0) * SamplingTime * SamplingTime * _Rz_d(2, 2));
+    _B_d_d(0, 4) = 1 / 2 * (_R2_d(0, 1) * SamplingTime * SamplingTime * _Rz_d(0, 0) + _R2_d(1, 1) * SamplingTime * SamplingTime * _Rz_d(0, 1) + _R2_d(2, 1) * SamplingTime * SamplingTime * _Rz_d(0, 2));
+    _B_d_d(1, 4) = 1 / 2 * (_R2_d(0, 1) * SamplingTime * SamplingTime * _Rz_d(1, 0) + _R2_d(1, 1) * SamplingTime * SamplingTime * _Rz_d(1, 1) + _R2_d(2, 1) * SamplingTime * SamplingTime * _Rz_d(1, 2));
+    _B_d_d(2, 4) = 1 / 2 * (_R2_d(0, 1) * SamplingTime * SamplingTime * _Rz_d(2, 0) + _R2_d(1, 1) * SamplingTime * SamplingTime * _Rz_d(2, 1) + _R2_d(2, 1) * SamplingTime * SamplingTime * _Rz_d(2, 2));
+    _B_d_d(0, 5) = 1 / 2 * (_R2_d(0, 2) * SamplingTime * SamplingTime * _Rz_d(0, 0) + _R2_d(1, 2) * SamplingTime * SamplingTime * _Rz_d(0, 1) + _R2_d(2, 2) * SamplingTime * SamplingTime * _Rz_d(0, 2));
+    _B_d_d(1, 5) = 1 / 2 * (_R2_d(0, 2) * SamplingTime * SamplingTime * _Rz_d(1, 0) + _R2_d(1, 2) * SamplingTime * SamplingTime * _Rz_d(1, 1) + _R2_d(2, 2) * SamplingTime * SamplingTime * _Rz_d(1, 2));
+    _B_d_d(2, 5) = 1 / 2 * (_R2_d(0, 2) * SamplingTime * SamplingTime * _Rz_d(2, 0) + _R2_d(1, 2) * SamplingTime * SamplingTime * _Rz_d(2, 1) + _R2_d(2, 2) * SamplingTime * SamplingTime * _Rz_d(2, 2));
+
+    _B_d_d(0, 6) = 1 / 2 * (_R3_d(0, 0) * SamplingTime * SamplingTime * _Rz_d(0, 0) + _R3_d(1, 0) * SamplingTime * SamplingTime * _Rz_d(0, 1) + _R3_d(2, 0) * SamplingTime * SamplingTime * _Rz_d(0, 2));
+    _B_d_d(1, 6) = 1 / 2 * (_R3_d(0, 0) * SamplingTime * SamplingTime * _Rz_d(1, 0) + _R3_d(1, 0) * SamplingTime * SamplingTime * _Rz_d(1, 1) + _R3_d(2, 0) * SamplingTime * SamplingTime * _Rz_d(1, 2));
+    _B_d_d(2, 6) = 1 / 2 * (_R3_d(0, 0) * SamplingTime * SamplingTime * _Rz_d(2, 0) + _R3_d(1, 0) * SamplingTime * SamplingTime * _Rz_d(2, 1) + _R3_d(2, 0) * SamplingTime * SamplingTime * _Rz_d(2, 2));
+    _B_d_d(0, 7) = 1 / 2 * (_R3_d(0, 1) * SamplingTime * SamplingTime * _Rz_d(0, 0) + _R3_d(1, 1) * SamplingTime * SamplingTime * _Rz_d(0, 1) + _R3_d(2, 1) * SamplingTime * SamplingTime * _Rz_d(0, 2));
+    _B_d_d(1, 7) = 1 / 2 * (_R3_d(0, 1) * SamplingTime * SamplingTime * _Rz_d(1, 0) + _R3_d(1, 1) * SamplingTime * SamplingTime * _Rz_d(1, 1) + _R3_d(2, 1) * SamplingTime * SamplingTime * _Rz_d(1, 2));
+    _B_d_d(2, 7) = 1 / 2 * (_R3_d(0, 1) * SamplingTime * SamplingTime * _Rz_d(2, 0) + _R3_d(1, 1) * SamplingTime * SamplingTime * _Rz_d(2, 1) + _R3_d(2, 1) * SamplingTime * SamplingTime * _Rz_d(2, 2));
+    _B_d_d(0, 8) = 1 / 2 * (_R3_d(0, 2) * SamplingTime * SamplingTime * _Rz_d(0, 0) + _R3_d(1, 2) * SamplingTime * SamplingTime * _Rz_d(0, 1) + _R3_d(2, 2) * SamplingTime * SamplingTime * _Rz_d(0, 2));
+    _B_d_d(1, 8) = 1 / 2 * (_R3_d(0, 2) * SamplingTime * SamplingTime * _Rz_d(1, 0) + _R3_d(1, 2) * SamplingTime * SamplingTime * _Rz_d(1, 1) + _R3_d(2, 2) * SamplingTime * SamplingTime * _Rz_d(1, 2));
+    _B_d_d(2, 8) = 1 / 2 * (_R3_d(0, 2) * SamplingTime * SamplingTime * _Rz_d(2, 0) + _R3_d(1, 2) * SamplingTime * SamplingTime * _Rz_d(2, 1) + _R3_d(2, 2) * SamplingTime * SamplingTime * _Rz_d(2, 2));
+
+    _B_d_d(0, 9) = 1 / 2 * (_R4_d(0, 0) * SamplingTime * SamplingTime * _Rz_d(0, 0) + _R4_d(1, 0) * SamplingTime * SamplingTime * _Rz_d(0, 1) + _R4_d(2, 0) * SamplingTime * SamplingTime * _Rz_d(0, 2));
+    _B_d_d(1, 9) = 1 / 2 * (_R4_d(0, 0) * SamplingTime * SamplingTime * _Rz_d(1, 0) + _R4_d(1, 0) * SamplingTime * SamplingTime * _Rz_d(1, 1) + _R4_d(2, 0) * SamplingTime * SamplingTime * _Rz_d(1, 2));
+    _B_d_d(2, 9) = 1 / 2 * (_R4_d(0, 0) * SamplingTime * SamplingTime * _Rz_d(2, 0) + _R4_d(1, 0) * SamplingTime * SamplingTime * _Rz_d(2, 1) + _R4_d(2, 0) * SamplingTime * SamplingTime * _Rz_d(2, 2));
+    _B_d_d(0, 10) = 1 / 2 * (_R4_d(0, 1) * SamplingTime * SamplingTime * _Rz_d(0, 0) + _R4_d(1, 1) * SamplingTime * SamplingTime * _Rz_d(0, 1) + _R4_d(2, 1) * SamplingTime * SamplingTime * _Rz_d(0, 2));
+    _B_d_d(1, 10) = 1 / 2 * (_R4_d(0, 1) * SamplingTime * SamplingTime * _Rz_d(1, 0) + _R4_d(1, 1) * SamplingTime * SamplingTime * _Rz_d(1, 1) + _R4_d(2, 1) * SamplingTime * SamplingTime * _Rz_d(1, 2));
+    _B_d_d(2, 10) = 1 / 2 * (_R4_d(0, 1) * SamplingTime * SamplingTime * _Rz_d(2, 0) + _R4_d(1, 1) * SamplingTime * SamplingTime * _Rz_d(2, 1) + _R4_d(2, 1) * SamplingTime * SamplingTime * _Rz_d(2, 2));
+    _B_d_d(0, 11) = 1 / 2 * (_R4_d(0, 2) * SamplingTime * SamplingTime * _Rz_d(0, 0) + _R4_d(1, 2) * SamplingTime * SamplingTime * _Rz_d(0, 1) + _R4_d(2, 2) * SamplingTime * SamplingTime * _Rz_d(0, 2));
+    _B_d_d(1, 11) = 1 / 2 * (_R4_d(0, 2) * SamplingTime * SamplingTime * _Rz_d(1, 0) + _R4_d(1, 2) * SamplingTime * SamplingTime * _Rz_d(1, 1) + _R4_d(2, 2) * SamplingTime * SamplingTime * _Rz_d(1, 2));
+    _B_d_d(2, 11) = 1 / 2 * (_R4_d(0, 2) * SamplingTime * SamplingTime * _Rz_d(2, 0) + _R4_d(1, 2) * SamplingTime * SamplingTime * _Rz_d(2, 1) + _R4_d(2, 2) * SamplingTime * SamplingTime * _Rz_d(2, 2));
+
+    _B_d_d.block<3, 3>(3, 0) = _I3x3*(SamplingTime*SamplingTime/(2*_m_body));
+    _B_d_d.block<3, 3>(3, 3) = _I3x3*(SamplingTime*SamplingTime/(2*_m_body));
+    _B_d_d.block<3, 3>(3, 6) = _I3x3*(SamplingTime*SamplingTime/(2*_m_body));
+    _B_d_d.block<3, 3>(3, 9) = _I3x3*(SamplingTime*SamplingTime/(2*_m_body));
+
+    _B_d_d.block<3, 3>(6, 0) = _R1*SamplingTime;
+    _B_d_d.block<3, 3>(6, 3) = _R2*SamplingTime;
+    _B_d_d.block<3, 3>(6, 6) = _R3*SamplingTime;
+    _B_d_d.block<3, 3>(6, 9) = _R4*SamplingTime;
+
+    _B_d_d.block<3, 3>(9, 0) = _I3x3*(SamplingTime/_m_body);
+    _B_d_d.block<3, 3>(9, 3) = _I3x3*(SamplingTime/_m_body);
+    _B_d_d.block<3, 3>(9, 6) = _I3x3*(SamplingTime/_m_body);
+    _B_d_d.block<3, 3>(9, 9) = _I3x3*(SamplingTime/_m_body);  
 }

@@ -342,7 +342,7 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 	// _trajectory_generator.update(_robot);
 #ifdef MPC_Debugging
 	static int td = 0;
-	if (td++ == 5000)
+	if (td++ == 3000)
 	{
 		_robot._pose_com_d._pos = _robot._pose_com._pos;
 		_robot._pose_body_d._pos = _robot._pose_body._pos;
@@ -400,7 +400,7 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 #ifdef MPC_Thread
 		_mpc_controller._start = true;
 
-		if (_mpc_controller._step++ == MPC_Step)
+		if (++_mpc_controller._step == Control_Step)
 		{
 			_mpc_controller._step = 0;
 			_mpc_controller.setControlData(_robot);
@@ -408,7 +408,7 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 			_mpc_controller._update = true;
 		}
 #else
-		if (_mpc_controller._step++ == MPC_Step)
+		if (++_mpc_controller._step == Control_Step)
 		{
 			_mpc_controller._step = 0;
 			_mpc_controller.setControlData(_robot);
@@ -513,7 +513,7 @@ void MainController::enforceJointLimits(double &command, unsigned int index)
 void MainController::printState()
 {
 	static int count = 0;
-	if (count > 100)
+	if (count > 30)
 	{
 		printf("*********************************************************\n\n");
 		printf("*** Simulation Time (unit: sec)  ***\n");
