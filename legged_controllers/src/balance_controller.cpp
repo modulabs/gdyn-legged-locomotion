@@ -77,10 +77,10 @@ void BalanceController::update(quadruped_robot::QuadrupedRobot& robot, std::arra
   _ubC.setZero();
 
   // gains
-  _kp_p << 100, 100, 200;
-  _kd_p << 10, 10, 20;
-  _kp_w << 400, 800, 200;
-  _kd_w << 20, 20, 20;
+  _kp_p << 100, 200, 100;
+  _kd_p << 20, 60, 20;
+  _kp_w << 1200, 800, 400;
+  _kd_w << 120, 80, 100;
 
   _S.setZero();
   _S.diagonal() << 1, 1, 1, 2, 2, 2;

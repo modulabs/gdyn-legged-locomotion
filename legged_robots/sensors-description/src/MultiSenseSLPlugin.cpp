@@ -82,7 +82,11 @@ MultiSenseSL::MultiSenseSL()
 ////////////////////////////////////////////////////////////////////////////////
 MultiSenseSL::~MultiSenseSL()
 {
+#if GAZEBO_MAJOR_VERSION < 9
   event::Events::DisconnectWorldUpdateBegin(this->updateConnection);
+#else
+  this->updateConnection.reset();
+#endif  
   delete this->pmq;
   this->rosnode_->shutdown();
   this->queue_.clear();
@@ -102,7 +106,11 @@ void MultiSenseSL::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   std::string prefix = "multisense/";
   ROS_DEBUG("Loading Multisense ROS node.");
 
+#if GAZEBO_MAJOR_VERSION < 9
   this->lastTime = this->world->GetSimTime();
+#else
+  this->lastTime = this->world->SimTime();
+#endif
 
   // Get imu link
   this->imuLink = this->robotModel->GetLink(this->imuLinkName);
@@ -139,8 +147,13 @@ void MultiSenseSL::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
 
   if (this->camera_joint) {
       // Setting limits to 0 so the joint doesn't move
+#if GAZEBO_MAJOR_VERSION < 9
       this->camera_joint->SetLowStop(0,math::Angle::Zero);
       this->camera_joint->SetHighStop(0,math::Angle::Zero);
+#else
+      this->camera_joint->SetLowerLimit(0,0);
+      this->camera_joint->SetUpperLimit(0,0);
+#endif
   } else {
       gzwarn << camera_joint_name << " not found! Things may not work for ";
       gzwarn << "the simulated Hokuyo. Have you set the joint in ";
@@ -151,8 +164,13 @@ void MultiSenseSL::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   this->spindle_joint = this->robotModel->GetJoint(spindle_joint_name);
   if(this->spindle_joint){
       // Setting limits to 0 so the joint doesn't move
+#if GAZEBO_MAJOR_VERSION < 9
       this->spindle_joint->SetLowStop(0,math::Angle::Zero);
       this->spindle_joint->SetHighStop(0,math::Angle::Zero);
+#else
+      this->spindle_joint->SetLowerLimit(0,0);
+      this->spindle_joint->SetUpperLimit(0,0);
+#endif
   } else {
       gzwarn << spindle_joint_name << " not found! Things may not work for ";
       gzwarn << "the simulated Hokuyo. Have you set the joint in ";
@@ -314,7 +332,11 @@ void MultiSenseSL::LoadThread()
     this->rosnode_->advertiseService(set_spindle_state_aso);
   */
 
+#if GAZEBO_MAJOR_VERSION < 9
   this->lastUpdateTime = this->world->GetSimTime().Double();
+#else
+  this->lastUpdateTime = this->world->SimTime().Double();
+#endif
   this->updateRate = 1.0;
 
   // ros callback queue for processing subscription
@@ -328,7 +350,11 @@ void MultiSenseSL::LoadThread()
 ////////////////////////////////////////////////////////////////////////////////
 void MultiSenseSL::UpdateStates()
 {
+#if GAZEBO_MAJOR_VERSION < 9
   common::Time curTime = this->world->GetSimTime();
+#else
+  common::Time curTime = this->world->SimTime();
+#endif
 
   // get imu data from imu link
   if (this->imuSensor)
@@ -337,6 +363,7 @@ void MultiSenseSL::UpdateStates()
     imuMsg.header.frame_id = this->imuLinkName;
     imuMsg.header.stamp = ros::Time(curTime.Double());
 
+#if GAZEBO_MAJOR_VERSION < 9
     // compute angular rates
     {
       math::Vector3 wLocal = this->imuSensor->AngularVelocity();
@@ -362,7 +389,33 @@ void MultiSenseSL::UpdateStates()
       imuMsg.orientation.z = imuRot.z;
       imuMsg.orientation.w = imuRot.w;
     }
+#else
+    // compute angular rates
+    {
+      ignition::math::Vector3d wLocal = this->imuSensor->AngularVelocity();
+      imuMsg.angular_velocity.x = wLocal.X();
+      imuMsg.angular_velocity.y = wLocal.Y();
+      imuMsg.angular_velocity.z = wLocal.Z();
+    }
 
+    // compute acceleration
+    {
+      ignition::math::Vector3d accel = this->imuSensor->LinearAcceleration();
+      imuMsg.linear_acceleration.x = accel.X();
+      imuMsg.linear_acceleration.y = accel.Y();
+      imuMsg.linear_acceleration.z = accel.Z();
+    }
+
+    // compute orientation
+    {
+      ignition::math::Quaterniond imuRot =
+        this->imuSensor->Orientation();
+      imuMsg.orientation.x = imuRot.X();
+      imuMsg.orientation.y = imuRot.Y();
+      imuMsg.orientation.z = imuRot.Z();
+      imuMsg.orientation.w = imuRot.W();
+    }
+#endif
 
     //
     // Publish the static transforms from our calibration.
@@ -383,7 +436,11 @@ void MultiSenseSL::UpdateStates()
   {
     this->jointStates.header.stamp = ros::Time(curTime.sec, curTime.nsec);
     this->jointStates.name[0] = this->motor_joint->GetName();
+#if GAZEBO_MAJOR_VERSION < 9
     math::Angle angle = this->motor_joint->GetAngle(0);
+#else
+    ignition::math::Angle angle = this->motor_joint->Position(0);
+#endif
     angle.Normalize();
     this->jointStates.position[0] = angle.Radian();
     this->jointStates.velocity[0] = this->motor_joint->GetVelocity(0);
