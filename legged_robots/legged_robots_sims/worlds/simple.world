@@ -1,5 +1,8 @@
 <sdf version="1.4">
 <world name="default">
+    <gui>
+      <plugin name="legged_gazebo_ui" filename="liblegged_gazebo_ui.so"/>
+    </gui>
     <include>
         <uri>model://sun</uri>
     </include>

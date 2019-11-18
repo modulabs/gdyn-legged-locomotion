@@ -30,6 +30,11 @@ controllers::Controller QuadrupedRobot::getController(size_t i)
     return _controller[i];
 }
 
+std::string QuadrupedRobot::getControllerName(size_t i)
+{
+  return controllers::ControllerToString(getController(i));
+}
+
 void QuadrupedRobot::setController(size_t i, controllers::Controller controller)
 {
   if (i == 4)  {

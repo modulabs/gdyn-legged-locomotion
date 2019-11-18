@@ -82,6 +82,9 @@ bool MainController::init(hardware_interface::EffortJointInterface *hw, ros::Nod
 	_kp.resize(_n_joints);
 	_kd.resize(_n_joints);
 
+	// service ui command
+	_ui_command_srv = n.advertiseService("ui_command", &MainController::srvUICommand, this);
+
 	// service updating gain
 	_gains_kp_buffer.writeFromNonRT(std::vector<double>(_n_joints, 0.0));
 	_gains_kd_buffer.writeFromNonRT(std::vector<double>(_n_joints, 0.0));
@@ -121,6 +124,16 @@ bool MainController::init(hardware_interface::EffortJointInterface *hw, ros::Nod
 		_controller_state_pub->msg_.effort_command.push_back(0.0);
 		_controller_state_pub->msg_.effort_feedforward.push_back(0.0);
 		_controller_state_pub->msg_.effort_feedback.push_back(0.0);
+	}
+
+	// start realtime ui state publisher
+	_ui_state_pub.reset(
+		new realtime_tools::RealtimePublisher<legged_controllers::UIState>(n, "ui_state", 1));
+
+	_ui_state_pub->msg_.header.stamp = ros::Time::now();
+	for (size_t i = 0; i < _n_joints; i++)
+	{
+		_ui_state_pub->msg_.controller_name.push_back("");
 	}
 
 	// For balance controller and mpc controller
@@ -289,6 +302,111 @@ bool MainController::srvMoveBodyCB(MoveBody::Request &request, MoveBody::Respons
 	// _minjerk_traj.setTrajInput(request.delta_pose, request.duration);
 }
 
+bool MainController::srvUICommand(UICommand::Request &request, UICommand::Response &response)
+{
+	std::string mainCommand = request.main_command;
+	std::string subCommand = request.sub_command;
+	long int intParam = request.param_int64;
+	double floatParam = request.param_float64;
+	if (mainCommand == "ChgCtrl")
+	{
+		_robot._pose_body_d._pos = _robot._pose_body._pos;
+	    _robot._pose_body_d._rot_quat.setIdentity();
+   		_robot._pose_body_d._pos(2) += 300 * MM2M;
+		
+		if (subCommand == "VSD")
+			_robot.setController(4, quadruped_robot::controllers::VirtualSpringDamper);
+		else if (subCommand == "BalQP")
+			_robot.setController(4, quadruped_robot::controllers::BalancingQP);
+		else if (subCommand == "BalMPC")
+			_robot.setController(4, quadruped_robot::controllers::BalancingMPC);
+		else if (subCommand == "BalMPCWB")
+			_robot.setController(4, quadruped_robot::controllers::BalancingMPCWholeBody);
+
+		response.result = true;
+		return true;
+	}
+	else if (mainCommand == "Body")
+	{
+		// Turn Left/Right
+		if (intParam == 0)
+		{
+			_robot._pose_body_d._rot_quat = AngleAxisd(15*D2R, Vector3d::UnitZ()) * _robot._pose_body_d._rot_quat;
+		}
+		else if (intParam == 2)
+		{
+			_robot._pose_body_d._rot_quat = AngleAxisd(-15*D2R, Vector3d::UnitZ()) * _robot._pose_body_d._rot_quat;
+		}
+		// X
+		else if (intParam == 1)
+		{
+		    _robot._pose_body_d._pos(0) += 50 * MM2M;
+		}
+		else if (intParam == 7)
+		{
+		    _robot._pose_body_d._pos(0) -= 50 * MM2M;
+		}
+		// Y
+		else if (intParam == 3)
+		{
+		    _robot._pose_body_d._pos(1) += 50 * MM2M;
+		}
+		else if (intParam == 5)
+		{
+		    _robot._pose_body_d._pos(1) -= 50 * MM2M;
+		}
+		// Z
+		else if (intParam == 6)
+		{
+		    _robot._pose_body_d._pos(2) += 50 * MM2M;
+		}
+		else if (intParam == 8)
+		{
+		    _robot._pose_body_d._pos(2) -= 50 * MM2M;
+		}
+		// Zero
+		else if (intParam == 4)
+		{
+			_robot._pose_body_d._pos(0) = 0.0;
+			_robot._pose_body_d._pos(1) = 0.0;
+			_robot._pose_body_d._pos(2) = 500.0 * MM2M;
+			_robot._pose_body_d._rot_quat.setIdentity();
+		}
+
+		response.result = true;
+		return true;
+	}
+	else if (mainCommand == "Order")
+	{
+		if (intParam == 0)
+		{
+			_robot._p_body2leg_d[0](2) = -0.2;
+			_robot.setController(0, quadruped_robot::controllers::VirtualSpringDamper);
+			_robot.setController(1, quadruped_robot::controllers::BalancingQP);
+			_robot.setController(2, quadruped_robot::controllers::BalancingQP);
+			_robot.setController(3, quadruped_robot::controllers::BalancingQP);
+		}
+		else if (intParam == 1)
+		{
+			_robot._p_body2leg_d[0](2) = -0.4;
+			_robot.setController(4, quadruped_robot::controllers::BalancingQP);
+		}
+		else if (intParam == 2)
+		{
+			// Order2
+		}
+		else if (intParam == 3)
+		{
+			// Please add the proper codes that restart the simulator
+		}
+		response.result = true;
+		return true;
+	}
+
+	response.result = false;
+	return true;
+}
+
 void MainController::update(const ros::Time &time, const ros::Duration &period)
 {
 	// Update from real-time buffer
@@ -340,6 +458,8 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 
 	// @TODO: Trajectory Generation, update trajectory - get from this initial state(temporary)
 	// _trajectory_generator.update(_robot);
+
+/* comment out to test the gui plugin
 #ifdef MPC_Debugging
 	static int td = 0;
 	if (td++ == 5000)
@@ -456,6 +576,7 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 //	_robot._pose_body_d._rot_quat.setIdentity();
 	_robot._pose_vel_body_d._angular.setZero();
 #endif
+*/
 
 	// Kinematics, Dynamics
 	_robot.calKinematicsDynamics();
@@ -555,6 +676,19 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 				}
 			}
 			_controller_state_pub->unlockAndPublish();
+		}
+	}
+	if (_loop_count % 20 == 0)
+	{
+		// realtime ui state publisher
+		if (_ui_state_pub->trylock())
+		{
+			_ui_state_pub->msg_.header.stamp = time;
+			for (int i = 0; i < 4; i++)
+			{
+				_ui_state_pub->msg_.controller_name[i] = _robot.getControllerName(i);
+			}
+			_ui_state_pub->unlockAndPublish();
 		}
 	}
 

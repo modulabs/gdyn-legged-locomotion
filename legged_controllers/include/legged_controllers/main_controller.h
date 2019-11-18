@@ -33,6 +33,8 @@
 
 
 #include <legged_controllers/ControllerJointState.h>
+#include <legged_controllers/UIState.h>
+#include <legged_controllers/UICommand.h>
 #include <legged_controllers/UpdateGain.h>
 
 #include <legged_robot/quadruped_robot.h>
@@ -75,6 +77,7 @@ public:
 
   // Service
 	bool srvMoveBodyCB(MoveBody::Request& request, MoveBody::Response& response);
+	bool srvUICommand(UICommand::Request& request, UICommand::Response& response);
 
 	bool updateGain(UpdateGain::Request& request, UpdateGain::Response& response);
 	bool updateGain();
@@ -138,9 +141,14 @@ private:
 	boost::scoped_ptr<
 		realtime_tools::RealtimePublisher<
 			legged_controllers::ControllerJointState> > _controller_state_pub;
-	
+	boost::scoped_ptr<
+		realtime_tools::RealtimePublisher<
+			legged_controllers::UIState> > _ui_state_pub;
+
+
 	// service
 	ros::ServiceServer _update_gain_srv;
+	ros::ServiceServer _ui_command_srv;
 };
 
 }

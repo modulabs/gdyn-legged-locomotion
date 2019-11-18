@@ -28,11 +28,11 @@
   <run_depend>kdl_parser</run_depend>
   <run_depend>realtime_tools</run_depend>
   <run_depend>angles</run_depend>
-  <!-- <run_depend>message_runtime</run_depend> -->
+  <run_depend>message_runtime</run_depend>
   <run_depend>message_generation</run_depend>
   <run_depend>qpoases</run_depend>
   <!-- <run_depend>dynamic_reconfigure</run_depend> -->
-
+  
    <export>
     <controller_interface plugin="${prefix}/controller_plugins.xml" />
   </export>
