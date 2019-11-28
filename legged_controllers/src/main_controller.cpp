@@ -468,7 +468,7 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 	// _trajectory_generator.update(_robot);
 
 
-#define SWING_CONTROL_TEST
+#undef SWING_CONTROL_TEST
 #ifdef SWING_CONTROL_TEST
   static int td = 0;
   static double s = 0;
