@@ -161,6 +161,14 @@ bool MainController::init(hardware_interface::EffortJointInterface *hw, ros::Nod
 	for (size_t i = 0; i < 4; i++)
 		_robot._p_body2leg_d[i] = Vector3d(0, 0, -0.4);
 
+  // trajectory
+  std::array<trajectory::Bezier<2,4>::VectorNd, 4> pnts;
+  pnts[0](0) = -0.3; pnts[0](1) = -0.5;
+  pnts[1](0) = -0.3; pnts[1](1) = -0.3;
+  pnts[2](0) = 0.3; pnts[2](1) = -0.3;
+  pnts[3](0) = 0.3; pnts[3](1) = -0.5;
+  _bezier_traj.setPoints(pnts);
+
 	return true;
 }
 
@@ -459,6 +467,34 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 	// @TODO: Trajectory Generation, update trajectory - get from this initial state(temporary)
 	// _trajectory_generator.update(_robot);
 
+
+#define SWING_CONTROL_TEST
+#ifdef SWING_CONTROL_TEST
+  static int td = 0;
+  static double s = 0;
+  if (td > 5000)
+  {
+    s = _t/2000;
+    if (s<1)
+    {
+      _robot._p_body2leg_d[0](0) = _bezier_traj.getPoint(0)(0);
+      _robot._p_body2leg_d[0](2) = _bezier_traj.getPoint(0)(1);
+    }
+    else if (s<2)
+    {
+      _robot._p_body2leg_d[0](0) = _bezier_traj.getPoint(s-1)(0);
+      _robot._p_body2leg_d[0](2) = _bezier_traj.getPoint(s-1)(1);
+    }
+    else
+    {
+      s = 0;
+    }
+
+
+    ROS_INFO("Change Controller to 3 leg balancing mode.");
+    _robot.setController(4, quadruped_robot::controllers::VirtualSpringDamper);
+  }
+#endif
 /* comment out to test the gui plugin
 #ifdef MPC_Debugging
 	static int td = 0;
