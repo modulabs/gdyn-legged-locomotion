@@ -32,6 +32,18 @@ namespace controllers
     BalancingMPCWholeBody,
     Swing
   };
+  inline const char* ControllerToString(Controller controller)
+  {
+      switch (controller)
+      {
+          case VirtualSpringDamper:   return "VSD";
+          case BalancingQP:           return "BalQP";
+          case BalancingMPC:          return "BalMPC";
+          case BalancingMPCWholeBody: return "BalMPCWB";
+          case Swing:                 return "Swing";
+          default:                    return "---";
+      }
+  }  
 }
 
 
@@ -45,6 +57,7 @@ public:
 
   // get function
   controllers::Controller getController(size_t i);
+  std::string getControllerName(size_t i);
 
   // set function
   void setController(size_t i, controllers::Controller controller);

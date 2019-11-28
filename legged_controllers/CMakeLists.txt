@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   kdl_parser
   realtime_tools
   qpoases
+  message_generation
   # dynamic_reconfigure
 )
 
@@ -30,11 +31,13 @@ find_package(catkin REQUIRED COMPONENTS
 
 # message
 add_message_files(FILES ControllerJointState.msg)
+add_message_files(FILES UIState.msg)
 
 add_service_files(
   FILES
   UpdateGain.srv
   MoveBody.srv
+  UICommand.srv
 )
 generate_messages(DEPENDENCIES std_msgs)
 
@@ -50,6 +53,7 @@ catkin_package(
     kdl_parser
     realtime_tools
     message_generation
+    message_runtime
     qpoases
     # dynamic_reconfigure
   INCLUDE_DIRS include
