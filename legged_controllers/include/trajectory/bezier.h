@@ -16,13 +16,25 @@ class Bezier
 
 
 public:
-  Bezier();
+  Bezier()
+  {
+    _n_order = N_PNT-1;
+    for (size_t i=0; i<=N_PNT; i++)
+      _b[i] = boost::math::binomial_coefficient<double>(_n_order, i);
+  }
 
   typedef Eigen::Matrix<double, N_DIM, 1> VectorNd;
 
   void setPoints(const array<VectorNd, N_PNT>& pnts) {_pnts = pnts;}
 
-  const VectorNd& getPoint(double t);
+  const VectorNd& getPoint(double t)
+  {
+    _p.setZero();
+    for(size_t i=0; i<=N_PNT; i++)
+      _p +=  _b[i] * pow(1-t, _n_order) * pow(t, i) * _pnts[i];
+
+    return _p;
+  }
 
 private:
   size_t                  _n_order;

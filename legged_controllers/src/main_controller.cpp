@@ -162,12 +162,12 @@ bool MainController::init(hardware_interface::EffortJointInterface *hw, ros::Nod
 		_robot._p_body2leg_d[i] = Vector3d(0, 0, -0.4);
 
   // trajectory
-  std::array<trajectory::Bezier<2,4>::VectorNd, 4> pnts;
-  pnts[0](0) = -0.3; pnts[0](1) = -0.5;
-  pnts[1](0) = -0.3; pnts[1](1) = -0.3;
-  pnts[2](0) = 0.3; pnts[2](1) = -0.3;
-  pnts[3](0) = 0.3; pnts[3](1) = -0.5;
-  _bezier_traj.setPoints(pnts);
+//  std::array<trajectory::Bezier<2,4>::VectorNd, 4> pnts;
+//  pnts[0](0) = -0.3; pnts[0](1) = -0.5;
+//  pnts[1](0) = -0.3; pnts[1](1) = -0.3;
+//  pnts[2](0) = 0.3; pnts[2](1) = -0.3;
+//  pnts[3](0) = 0.3; pnts[3](1) = -0.5;
+//  _bezier_traj.setPoints(pnts);
 
 	return true;
 }

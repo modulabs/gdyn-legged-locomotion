@@ -68,7 +68,6 @@ add_library(${PROJECT_NAME}
   src/mpc_controller.cpp
   src/legged_robot/quadruped_robot.cpp
   src/trajectory/min_jerk.cpp
-  src/trajectory/bezier.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
