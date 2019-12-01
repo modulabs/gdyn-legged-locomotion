@@ -134,14 +134,7 @@ bool MainController::init(hardware_interface::EffortJointInterface *hw, ros::Nod
 	_virtual_spring_damper_controller.init();
 	_balance_controller.init();
 	_mpc_controller.init();
-#ifdef MPC_Thread
-	_mpc_controller._start = false;
-	_mpc_controller._update = false;
 	_mpc_controller._step = 0;
-	_thread_mpc_controller = boost::thread(boost::bind(&MPCController::calControlInput, &_mpc_controller));
-#else
-	_mpc_controller._step = 0;
-#endif
 
 	// first controller
 	_robot.setController(4, quadruped_robot::controllers::VirtualSpringDamper);
@@ -348,13 +341,34 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 		_robot._pose_body_d._pos = _robot._pose_body._pos;
 		_robot._pose_body_d._rot_quat = _robot._pose_body._rot_quat;
 		_robot._p_world2leg_d = _robot._p_world2leg;
+		_robot._pose_vel_com_d._linear.setZero();
+		_robot._pose_vel_body_d._angular.setZero();
 
 		_robot.setController(4, quadruped_robot::controllers::BalancingMPC);
 		ROS_INFO("Change Controller from virtual spring damper to MPC Controller");
-
-		_robot._pose_vel_com_d._linear.setZero();
-		_robot._pose_vel_body_d._angular.setZero();
 	}
+	if (td == 4000)
+	{
+		_robot._pose_body_d._pos(2) += 200 * MM2M;
+	}
+
+	if (td == 6000)
+	{
+		_robot._p_body2leg_d[0](2) = -0.2;
+
+		ROS_INFO("Change Controller to 3 leg balancing mode.");
+		_robot.setController(0, quadruped_robot::controllers::VirtualSpringDamper);
+		_robot.setController(1, quadruped_robot::controllers::BalancingMPC);
+		_robot.setController(2, quadruped_robot::controllers::BalancingMPC);
+		_robot.setController(3, quadruped_robot::controllers::BalancingMPC);
+	}
+
+	if(td >= 6000)
+	{
+		_robot._contact_states[1] = true;
+		_robot._contact_states[2] = true;
+		_robot._contact_states[3] = true;
+	}	
 #else
 	static int td = 0;
 	if (td++ == 5000)
@@ -463,27 +477,19 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 
 #ifdef MPC_Debugging
 
-	if (_robot.getController(0) == quadruped_robot::controllers::BalancingMPC)
-	{
-#ifdef MPC_Thread
-		_mpc_controller._start = true;
-
-		if (++_mpc_controller._step == Control_Step)
+	if (_robot.getController(1) == quadruped_robot::controllers::BalancingMPC)
+	{		
+		if (_mpc_controller._step++ == 0)
 		{
-			_mpc_controller._step = 0;
-			_mpc_controller.setControlData(_robot);
-			_mpc_controller.getControlInput(_robot, _F_leg);
-			_mpc_controller._update = true;
-		}
-#else
-		if (++_mpc_controller._step == Control_Step)
-		{
-			_mpc_controller._step = 0;
 			_mpc_controller.setControlData(_robot);
 			_mpc_controller.calControlInput();
 			_mpc_controller.getControlInput(_robot, _F_leg);
+		}		
+
+		if (_mpc_controller._step == Control_Step)
+		{
+			_mpc_controller._step = 0;
 		}
-#endif
 	}
 
 #else

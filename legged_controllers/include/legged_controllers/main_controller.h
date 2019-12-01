@@ -125,9 +125,6 @@ private:
 	BalanceController _balance_controller;
 	VirtualSpringDamperController _virtual_spring_damper_controller;
 	MPCController _mpc_controller;
-	#ifdef MPC_Thread	
-	boost::thread _thread_mpc_controller;
-	#endif
 	
 	// gain
 	KDL::JntArray _kp, _kd;
