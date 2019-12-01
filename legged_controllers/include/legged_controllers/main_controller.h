@@ -33,10 +33,13 @@
 
 
 #include <legged_controllers/ControllerJointState.h>
+#include <legged_controllers/UIState.h>
+#include <legged_controllers/UICommand.h>
 #include <legged_controllers/UpdateGain.h>
 
 #include <legged_robot/quadruped_robot.h>
 
+//#include <trajectory/bezier.h>
 #include <legged_controllers/balance_controller.h>
 #include <legged_controllers/virtual_spring_damper_controller.h>
 #include <legged_controllers/swing_controller.h>
@@ -75,6 +78,7 @@ public:
 
   // Service
 	bool srvMoveBodyCB(MoveBody::Request& request, MoveBody::Response& response);
+	bool srvUICommand(UICommand::Request& request, UICommand::Response& response);
 
 	bool updateGain(UpdateGain::Request& request, UpdateGain::Response& response);
 	bool updateGain();
@@ -120,6 +124,8 @@ private:
 	std::array<Eigen::Vector3d, 4> _F_leg_balance; 	// FIXME. temporary
 	std::array<Eigen::Vector3d, 4> _tau_leg;
 
+  // trajectory
+//  trajectory::Bezier<2, 4> _bezier_traj;
 
 	// 
 	BalanceController _balance_controller;
@@ -135,9 +141,14 @@ private:
 	boost::scoped_ptr<
 		realtime_tools::RealtimePublisher<
 			legged_controllers::ControllerJointState> > _controller_state_pub;
-	
+	boost::scoped_ptr<
+		realtime_tools::RealtimePublisher<
+			legged_controllers::UIState> > _ui_state_pub;
+
+
 	// service
 	ros::ServiceServer _update_gain_srv;
+	ros::ServiceServer _ui_command_srv;
 };
 
 }
