@@ -10,7 +10,7 @@ Just download this package in your catkin workspace, and build.
 
 [ROS wrapper of qpOASES](https://github.com/SemRoCo/qpOASES)
 Download this package in your catkin workspace, and build.
-This package depends on cython. Install cython using pip.
+Install cython using pip, if you are requested.
 
 ```bash
 $ pip install cython
