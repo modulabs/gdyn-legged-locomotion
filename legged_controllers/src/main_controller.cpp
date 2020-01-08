@@ -470,7 +470,7 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
   {
     s_ = s-0.5;
     if (s_ < 0)
-      s__ += 0.5;
+      s__ += 1;
     else
       s__ = s_;
 
@@ -495,6 +495,7 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
   td++;
 #endif
 // comment out to test the gui plugin
+  /*
 #ifdef MPC_Debugging
 	static int td = 0;
 	if (td++ == 3000)
@@ -632,6 +633,7 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 //	_robot._pose_body_d._rot_quat.setIdentity();
 	_robot._pose_vel_body_d._angular.setZero();
 #endif
+*/
 
 
 	// Kinematics, Dynamics
