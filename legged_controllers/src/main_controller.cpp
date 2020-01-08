@@ -155,12 +155,12 @@ bool MainController::init(hardware_interface::EffortJointInterface *hw, ros::Nod
 		_robot._p_body2leg_d[i] = Vector3d(0, 0, -0.4);
 
   // trajectory
-//  std::array<trajectory::Bezier<2,4>::VectorNd, 4> pnts;
-//  pnts[0](0) = -0.3; pnts[0](1) = -0.5;
-//  pnts[1](0) = -0.3; pnts[1](1) = -0.3;
-//  pnts[2](0) = 0.3; pnts[2](1) = -0.3;
-//  pnts[3](0) = 0.3; pnts[3](1) = -0.5;
-//  _bezier_traj.setPoints(pnts);
+  std::vector<Vector2d> pnts(4);
+  pnts[0](0) = -0.3; pnts[0](1) = -0.5;
+  pnts[1](0) = -0.3; pnts[1](1) = -0.3;
+  pnts[2](0) = 0.3; pnts[2](1) = -0.3;
+  pnts[3](0) = 0.3; pnts[3](1) = -0.5;
+  _bezier_traj.setPoints(pnts);
 
 	return true;
 }
@@ -465,30 +465,36 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 #ifdef SWING_CONTROL_TEST
   static int td = 0;
   static double s = 0;
+  double s_, s__;
   if (td > 5000)
   {
-    s = _t/2000;
-    if (s<1)
-    {
-      _robot._p_body2leg_d[0](0) = _bezier_traj.getPoint(0)(0);
-      _robot._p_body2leg_d[0](2) = _bezier_traj.getPoint(0)(1);
-    }
-    else if (s<2)
-    {
-      _robot._p_body2leg_d[0](0) = _bezier_traj.getPoint(s-1)(0);
-      _robot._p_body2leg_d[0](2) = _bezier_traj.getPoint(s-1)(1);
-    }
+    s_ = s-0.5;
+    if (s_ < 0)
+      s__ += 0.5;
     else
-    {
+      s__ = s_;
+
+    _robot._p_body2leg_d[0](0) = _bezier_traj.getPoint(s)(0);
+    _robot._p_body2leg_d[0](2) = _bezier_traj.getPoint(s)(1);
+
+    _robot._p_body2leg_d[1](0) = _bezier_traj.getPoint(s__)(0);
+    _robot._p_body2leg_d[1](2) = _bezier_traj.getPoint(s__)(1);
+
+    _robot._p_body2leg_d[2](0) = _bezier_traj.getPoint(s__)(0);
+    _robot._p_body2leg_d[2](2) = _bezier_traj.getPoint(s__)(1);
+
+    _robot._p_body2leg_d[3](0) = _bezier_traj.getPoint(s)(0);
+    _robot._p_body2leg_d[3](2) = _bezier_traj.getPoint(s)(1);
+
+    s += 0.001;
+    if (s > 1)
       s = 0;
-    }
 
-
-    ROS_INFO("Change Controller to 3 leg balancing mode.");
     _robot.setController(4, quadruped_robot::controllers::VirtualSpringDamper);
   }
+  td++;
 #endif
-/* comment out to test the gui plugin
+// comment out to test the gui plugin
 #ifdef MPC_Debugging
 	static int td = 0;
 	if (td++ == 3000)
@@ -626,7 +632,7 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 //	_robot._pose_body_d._rot_quat.setIdentity();
 	_robot._pose_vel_body_d._angular.setZero();
 #endif
-*/
+
 
 	// Kinematics, Dynamics
 	_robot.calKinematicsDynamics();

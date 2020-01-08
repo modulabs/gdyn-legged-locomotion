@@ -39,7 +39,7 @@
 
 #include <legged_robot/quadruped_robot.h>
 
-//#include <trajectory/bezier.h>
+#include <trajectory/bezier.h>
 #include <legged_controllers/balance_controller.h>
 #include <legged_controllers/virtual_spring_damper_controller.h>
 #include <legged_controllers/swing_controller.h>
@@ -125,7 +125,7 @@ private:
 	std::array<Eigen::Vector3d, 4> _tau_leg;
 
   // trajectory
-//  trajectory::Bezier<2, 4> _bezier_traj;
+  trajectory::Bezier _bezier_traj;
 
 	// 
 	BalanceController _balance_controller;
