@@ -154,13 +154,18 @@ bool MainController::init(hardware_interface::EffortJointInterface *hw, ros::Nod
 	for (size_t i = 0; i < 4; i++)
 		_robot._p_body2leg_d[i] = Vector3d(0, 0, -0.4);
 
-  // trajectory
+  // trajectory control points
   std::vector<Vector2d> pnts(4);
   pnts[0](0) = -0.3; pnts[0](1) = -0.5;
   pnts[1](0) = -0.3; pnts[1](1) = -0.3;
   pnts[2](0) = 0.3; pnts[2](1) = -0.3;
   pnts[3](0) = 0.3; pnts[3](1) = -0.5;
-  _bezier_traj.setPoints(pnts);
+  _swing_traj.setPoints(pnts);
+
+  pnts.resize(2);
+  pnts[0](0) = 0.3; pnts[0](1) = -0.5;
+  pnts[1](0) = -0.3; pnts[1](1) = -0.5;
+  _stance_traj.setPoints(pnts);
 
 	return true;
 }
@@ -461,34 +466,77 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 	// _trajectory_generator.update(_robot);
 
 
-#undef SWING_CONTROL_TEST
+#define SWING_CONTROL_TEST
 #ifdef SWING_CONTROL_TEST
   static int td = 0;
   static double s = 0;
   double s_, s__;
+
+  static double t_touchdown = 0;
+  std::array<double, 4> gait_phase_lag;
+  std::array<double, 4> trot_gait_phase_lag = {0, 0.5, 0.5, 0};
+  std::array<double, 4> gallop_gait_phase_lag = {0, 0.2, 0.55, 0.75};
+  double T_stance = 1;
+  double T_swing = 0.25;
+  double T_stride = T_stance + T_swing;
+
+
   if (td > 5000)
   {
-    s_ = s-0.5;
-    if (s_ < 0)
-      s__ += 1;
-    else
-      s__ = s_;
+    _robot._t_leg[0] = _t - t_touchdown;
 
-    _robot._p_body2leg_d[0](0) = _bezier_traj.getPoint(s)(0);
-    _robot._p_body2leg_d[0](2) = _bezier_traj.getPoint(s)(1);
+    if (_robot._t_leg[0] > T_stride)
+    {
+      t_touchdown = _t;
+      _robot._t_leg[0] = T_stride;
+    }
 
-    _robot._p_body2leg_d[1](0) = _bezier_traj.getPoint(s__)(0);
-    _robot._p_body2leg_d[1](2) = _bezier_traj.getPoint(s__)(1);
+    for (int i=0; i<4; i++)
+    {
+      _robot._t_leg[i] = _robot._t_leg[0] - trot_gait_phase_lag[i] * T_stride;
 
-    _robot._p_body2leg_d[2](0) = _bezier_traj.getPoint(s__)(0);
-    _robot._p_body2leg_d[2](2) = _bezier_traj.getPoint(s__)(1);
+      if (_robot._t_leg[i] < -T_stride)
+      {
+        _robot._contact_state[i] = 0;
+        _robot._S_swing[i] = 1;
+      }
+      else if (_robot._t_leg[i] < -T_swing)
+      {
+        _robot._contact_state[i] = 1;
+        _robot._S_stance[i] = (_robot._t_leg[i] + T_stride) / T_stance;
+      }
+      else if (_robot._t_leg[i] < 0)
+      {
+        _robot._contact_state[i] = 0;
+        _robot._S_swing[i] = (_robot._t_leg[i] + T_swing) / T_swing;
+      }
+      else if (_robot._t_leg[i] < T_stance)
+      {
+        _robot._contact_state[i] = 1;
+        _robot._S_stance[i] = _robot._t_leg[i]/T_stance;
+      }
+      else if (_robot._t_leg[i] < T_stride)
+      {
+        _robot._contact_state[i] = 0;
+        _robot._S_swing[i] = (_robot._t_leg[i] - T_stance) / T_swing;
+      }
+      else
+      {
+        _robot._contact_state[i] = 0;
+        _robot._S_swing[i] = 1;
+      }
 
-    _robot._p_body2leg_d[3](0) = _bezier_traj.getPoint(s)(0);
-    _robot._p_body2leg_d[3](2) = _bezier_traj.getPoint(s)(1);
-
-    s += 0.001;
-    if (s > 1)
-      s = 0;
+      if (_robot._contact_state[i] == 0)
+      {
+        _robot._p_body2leg_d[i](0) = _swing_traj.getPoint(_robot._S_swing[i])(0);
+        _robot._p_body2leg_d[i](2) = _swing_traj.getPoint(_robot._S_swing[i])(1);
+      }
+      else
+      {
+        _robot._p_body2leg_d[i](0) = _stance_traj.getPoint(_robot._S_stance[i])(0);
+        _robot._p_body2leg_d[i](2) = _stance_traj.getPoint(_robot._S_stance[i])(1);
+      }
+    }
 
     _robot.setController(4, quadruped_robot::controllers::VirtualSpringDamper);
   }

@@ -96,6 +96,13 @@ public:
 
   std::array<Eigen::Vector3d, 4> _p_body2leg_d;
 
+  std::array<double, 4> _T_stance;
+  std::array<double, 4> _T_swing;
+  std::array<double, 4> _S_stance;
+  std::array<double, 4> _S_swing;
+  std::array<double, 4> _t_leg;
+  std::array<int, 4> _contact_state;
+
   // body
   Pose  _pose_body, _pose_body_d;         // world to body
   Pose  _pose_com, _pose_com_d;           // world to com

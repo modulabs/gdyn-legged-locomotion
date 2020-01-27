@@ -125,7 +125,8 @@ private:
 	std::array<Eigen::Vector3d, 4> _tau_leg;
 
   // trajectory
-  trajectory::Bezier _bezier_traj;
+  trajectory::Bezier _swing_traj;
+  trajectory::Bezier _stance_traj;
 
 	// 
 	BalanceController _balance_controller;
