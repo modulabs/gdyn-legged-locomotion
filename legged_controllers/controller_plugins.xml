@@ -1,9 +1,0 @@
-<library path="lib/liblegged_controllers">
-
-  <class name="legged_controllers/MainController" type="legged_controllers::MainController" base_class_type="controller_interface::ControllerBase">
-    <description>
-	    Legged Controllers::Main Controller
-    </description>
-  </class>
-</library>
-

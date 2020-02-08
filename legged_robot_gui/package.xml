@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>legged_robot_gui</name>
+  <version>0.3.0</version>
+  <description>ROS package for legged_robot_gui</description>
+
+  <maintainer email="kyungmin5257@gmail.com">kyungmin</maintainer>
+  <maintainer email="kjy880527@gmail.com">Jungyeong Kim</maintainer>
+  <maintainer email="babchol@gmail.com">Hancheol Choi</maintainer>
+  <maintainer email="scleewa@naver.com">SeungChan Lee</maintainer>
+  <maintainer email="sjh2808@gmail.com">Ryan Shim</maintainer>
+  <license>MIT</license>
+  <url type="repository">https://github.com/modulabs/gdyn-legged-locomotion</url>
+  <author email="kyungmin5257@gmail.com">kyungmin</author>
+  <author email="kjy880527@gmail.com">Jungyeong Kim</author>
+  <author email="babchol@gmail.com">Hancheol Choi</author>
+  <author email="scleewa@naver.com">SeungChan Lee</author>
+  <author email="sjh2808@gmail.com">Ryan Shim</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>roscpp</depend>
+  <depend>legged_robot_msgs</depend>
+</package>

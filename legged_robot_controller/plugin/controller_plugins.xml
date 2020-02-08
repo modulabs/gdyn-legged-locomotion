@@ -1,0 +1,5 @@
+<library path="lib/liblegged_robot_controller">
+  <class name="legged_robot_controller/MainController" type="legged_robot_controller::MainController" base_class_type="controller_interface::ControllerBase">
+    <description>legged_robot_controller::MainController</description>
+  </class>
+</library>

@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+
+<robot name="hyq" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find legged_robot_description)/urdf/hyq_fixed/hyq.gazebo.xacro" />
+
+  <!-- The following included files set up definitions of parts of the robot body -->
+  <xacro:include filename="$(find legged_robot_description)/urdf/hyq_fixed/common.xacro"/>
+
+	<!-- HyQ trunk -->
+	<xacro:include filename="$(find legged_robot_description)/urdf/hyq_fixed/trunk.urdf.xacro"/>
+
+	<!-- HyQ legs -->
+	<xacro:include filename="$(find legged_robot_description)/urdf/hyq_fixed/leg.urdf.xacro"/>
+
+
+	<!-- Using the macros defined above -->
+	<!-- trunk -->
+	<xacro:hyq_trunk name="base"/>
+
+	<!-- LF leg -->
+	<xacro:hyq_leg
+		name="lf"
+		parent="trunk"
+		reflect_hip="1"
+		reflect_upper="1"
+		reflect_front="1">
+		<origin xyz="${d_fh/2} ${d_lr/2} 0" rpy="0 ${PI/2} ${PI}"/>
+	</xacro:hyq_leg>
+
+	<!-- RF leg -->
+	<xacro:hyq_leg
+		name="rf"
+		parent="trunk"
+		reflect_hip="-1"
+		reflect_upper="-1"
+		reflect_front="1">
+		<origin xyz="${d_fh/2} ${-d_lr/2} 0" rpy="0 ${PI/2} 0"/>
+	</xacro:hyq_leg>
+
+	<!-- LH leg -->
+	<xacro:hyq_leg
+		name="lh"
+		parent="trunk"
+		reflect_hip="-1"
+		reflect_upper="1"
+		reflect_front="-1">
+		<origin xyz="${-d_fh/2} ${d_lr/2} 0" rpy="0 ${PI/2} ${PI}"/>
+	</xacro:hyq_leg>
+
+	<!-- RH leg -->
+	<xacro:hyq_leg
+		name="rh"
+		parent="trunk"
+		reflect_hip="1"
+		reflect_upper="-1"
+		reflect_front="-1">
+		<origin xyz="${-d_fh/2} ${-d_lr/2} 0" rpy="0 ${PI/2} 0"/>
+	</xacro:hyq_leg>
+
+</robot>
