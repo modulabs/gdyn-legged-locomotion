@@ -112,6 +112,7 @@ bool MainController::init(hardware_interface::EffortJointInterface *hw, ros::Nod
   _contact_states_sub[2] = n.subscribe("/hyq/lh_foot_bumper", 1, &MainController::subscribeLHContactState, this);
   _contact_states_sub[3] = n.subscribe("/hyq/rh_foot_bumper", 1, &MainController::subscribeRHContactState, this);
 
+
   // start realtime state publisher
   _controller_state_pub.reset(
     new realtime_tools::RealtimePublisher<legged_robot_msgs::ControllerJointState>(n, "state", 1));
@@ -140,6 +141,13 @@ bool MainController::init(hardware_interface::EffortJointInterface *hw, ros::Nod
   {
     _ui_state_pub->msg_.controller_name.push_back("");
   }
+
+  // start realtime lf wrench publisher
+  _lf_wrench_pub.reset(
+    new realtime_tools::RealtimePublisher<geometry_msgs::WrenchStamped>(n, "lf_wrench", 1));
+
+  _lf_wrench_pub->msg_.header.stamp = ros::Time::now();
+  _lf_wrench_pub->msg_.header.frame_id = "lf_foot";
 
   // For balance controller and mpc controller
   _robot._m_body = 83.282; //60.96, 71.72,
@@ -790,6 +798,16 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
       }
       _ui_state_pub->unlockAndPublish();
     }
+  }
+
+  // realtime lf wrench publisher
+  if (_lf_wrench_pub->trylock())
+  {
+    _lf_wrench_pub->msg_.header.stamp = time;
+    _lf_wrench_pub->msg_.wrench.force.x = 0.0;
+    _lf_wrench_pub->msg_.wrench.force.y = 0.0;
+    _lf_wrench_pub->msg_.wrench.force.z = 1.0;
+    _lf_wrench_pub->unlockAndPublish();
   }
 
   // ********* printf state *********

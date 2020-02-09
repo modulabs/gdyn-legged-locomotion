@@ -28,6 +28,7 @@
 #include <gazebo_msgs/LinkStates.h>
 #include <gazebo_msgs/ContactsState.h>
 #include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/WrenchStamped.h>
 
 #include "legged_robot_controller/balance_controller.h"
 #include "legged_robot_controller/mpc_controller.h"
@@ -138,6 +139,11 @@ private:
   boost::scoped_ptr<
     realtime_tools::RealtimePublisher<
       legged_robot_msgs::UIState> > _ui_state_pub;
+
+  // 
+  boost::scoped_ptr<
+    realtime_tools::RealtimePublisher<
+      geometry_msgs::WrenchStamped> > _lf_wrench_pub;
 
   // service
   ros::ServiceServer _update_gain_srv;

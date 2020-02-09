@@ -13,6 +13,7 @@ Changelog for package gdyn-legged-locomotion
 * added the install_ros_kinetic.sh file
 * added travisCI status to the README.md file
 * modified the installation instruction in the README.md file
+* added foot wrench to display on rviz
 * Contributors: Ryan Shim
 
 0.2.0 (2019-12-01)
