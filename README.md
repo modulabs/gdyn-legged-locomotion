@@ -15,6 +15,14 @@ Install cython using pip, if you are requested.
 ```bash
 $ pip install cython
 ```
+## How to run
+There are ros luanch files in legged_robots/legged_robots_sims/launch. 
+
+run_hyq.launch and run_hyq_fixed.launch is valid for now.
+
+```bash
+$ roslaunch legged_robots_sims run_hyq.launch
+```
 
 ## References
 
