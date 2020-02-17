@@ -4,6 +4,7 @@
 ## Videos
 [강남Dynamics Youtube Channel](https://www.youtube.com/channel/UCZDq0-S-_fNhUzGUlN39hfg?view_as=subscriber)
 
+
 ## Install
   ```bash
   # Install ROS
@@ -19,6 +20,26 @@
   $ pip install cython ds4drv
   $ cd ~/catkin_ws && catkin_make
   ```
+
+## Dependencies
+[spawn_robot_tools](https://bitbucket.org/theconstructcore/spawn_robot_tools/src/master/)
+Just download this package in your catkin workspace, and build.
+
+[ROS wrapper of qpOASES](https://github.com/SemRoCo/qpOASES)
+Download this package in your catkin workspace, and build.
+Install cython using pip, if you are requested.
+
+```bash
+$ pip install cython
+```
+## How to run
+There are ros luanch files in legged_robots/legged_robots_sims/launch. 
+
+run_hyq.launch and run_hyq_fixed.launch is valid for now.
+
+```bash
+$ roslaunch legged_robots_sims run_hyq.launch
+```
 
 ## References
 
