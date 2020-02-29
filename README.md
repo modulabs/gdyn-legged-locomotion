@@ -1,8 +1,25 @@
-# gdyn-legged-locomotion
+# gdyn-legged-locomotion ![Travis CI status](https://travis-ci.org/rjshim/gdyn-legged-locomotion.svg?branch=master)
 4-Legged Robot Project of 강남Dynamics Lab
 
 ## Videos
 [강남Dynamics Youtube Channel](https://www.youtube.com/channel/UCZDq0-S-_fNhUzGUlN39hfg?view_as=subscriber)
+
+
+## Install
+  ```bash
+  # Install ROS
+  $ wget https://raw.githubusercontent.com/rjshim/gdyn-legged-locomotion/master/install_ros_kinetic.sh && chmod 755 ./install_ros_kinetic.sh && bash ./install_ros_kinetic.sh
+
+  # Install & Bulid legged robot packages
+  $ cd ~/catkin_ws/src
+  $ git clone https://github.com/rjshim/gdyn-legged-locomotion.git
+  $ sudo apt-get install ros-kinetic-joy \
+                 ros-kinetic-joystick-drivers \
+                 ros-kinetic-teleop-twist-joy
+  $ sudo apt-get install python-pip
+  $ pip install cython ds4drv
+  $ cd ~/catkin_ws && catkin_make
+  ```
 
 ## Dependencies
 [spawn_robot_tools](https://bitbucket.org/theconstructcore/spawn_robot_tools/src/master/)

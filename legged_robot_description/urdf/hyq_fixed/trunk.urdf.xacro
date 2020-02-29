@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+	<!-- trunk macro definition -->
+	<xacro:macro name="hyq_trunk" params="name">
+
+		<!-- World -->
+		<link name="world"/>
+
+		<!-- World Fixed Joint-->
+  		<joint name="world_base_joint" type="fixed">
+    		<origin xyz="0 0 ${z_offset_from_world}" rpy="0 0 0" />
+			<parent link="world" />
+			<child link="${name}" />
+		</joint>
+
+		<!-- Footprint link -->
+		<link name="${name}">
+			<visual>
+				<geometry>
+					<cylinder length="0.01" radius="0.01"/>
+				</geometry>
+			</visual>
+		</link>
+
+		<!-- Floating-base Joint -->
+		<joint name="floating_base" type="fixed">
+			<origin xyz="0 0 0.0" rpy="0 0 0"/>
+			<parent link="${name}"/>
+			<child link="trunk"/>
+		</joint>
+
+		<!-- Trunk link -->
+		<link name="trunk">
+			<inertial>
+				<origin xyz="${xcom_trunk} ${ycom_trunk} ${zcom_trunk}"/>
+				<mass value="${m_trunk}"/>
+				<inertia ixx="${ixx_trunk}" iyy="${iyy_trunk}" izz="${izz_trunk}"
+						 ixy="${ixy_trunk}" ixz="${ixz_trunk}" iyz="${iyz_trunk}"/>
+			</inertial>
+			<visual>
+				<geometry>
+					<mesh filename="package://legged_robot_description/meshes/trunk/trunk.dae" scale="1 1 1"/>
+				</geometry>
+			</visual>
+			<collision>
+				<geometry>
+					<mesh filename="package://legged_robot_description/meshes/trunk/trunk.dae" scale="1 1 1"/>
+				</geometry>
+			</collision>
+		</link>
+
+	</xacro:macro>
+
+</robot>

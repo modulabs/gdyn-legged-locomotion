@@ -1,0 +1,15 @@
+<launch>
+  <arg name="robot_name"     default="hyq"/>
+  <arg name="use_gui"        default="true" />
+
+  <include file="$(find legged_robot_description)/launch/hyq_upload.launch"/>
+
+  <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher">
+    <param name="/use_gui" value="$(arg use_gui)"/>
+    <rosparam param="source_list" subst_value="true">["$(arg robot_name)/joint_states"]</rosparam>
+  </node>
+
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher"/>
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find legged_robot_description)/rviz/legged_robot.rviz"/>
+</launch>

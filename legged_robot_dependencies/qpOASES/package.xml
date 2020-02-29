@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>qpOASES</name>
+  <version>3.1.0</version>
+  <description>
+    A ROS wrapper for the C++ 3rd party library qpOASES.
+  </description>
+
+  <license>LGPL v2.1</license>
+
+  <author>Alexander Buchner</author>
+  <author>Holger Diedam</author>
+  <author>Manuel Kudruss</author>
+  <author>Sebastian F. Walter</author>
+
+  <maintainer email="georg.bartels@cs.uni-bremen.de">Georg Bartels</maintainer>
+  <url>https://projects.coin-or.org/qpOASES</url>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>cython</depend>
+  <depend>python-numpy</depend>
+</package>

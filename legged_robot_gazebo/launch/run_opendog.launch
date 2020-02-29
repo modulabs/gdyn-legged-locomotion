@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <include file="$(find legged_robot_gazebo)/launch/world.launch"/>
+
+  <include file="$(find legged_robot_gazebo)/launch/spawn_opendog.launch"/>
+</launch>

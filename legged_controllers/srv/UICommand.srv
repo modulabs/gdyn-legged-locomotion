@@ -1,6 +1,0 @@
-string main_command
-string sub_command
-int64 param_int64
-float64 param_float64
----
-bool result

@@ -1,0 +1,26 @@
+language: generic
+services:
+  - docker
+
+env:
+  matrix:
+    - ROS_DISTRO=kinetic ROS_REPO=ros-shadow-fixed UPSTREAM_WORKSPACE=debian OS_NAME=ubuntu OS_CODE_NAME=xenial
+
+before_install:
+  - pip install --upgrade pip --user
+  - pip install cython --user
+install:
+  - git clone --quiet --depth 1 https://github.com/ros-industrial/industrial_ci.git .industrial_ci
+script:
+  - .industrial_ci/travis.sh
+
+branches:
+  only:
+    - master
+
+notifications:
+  email:
+    on_success: always
+    on_failure: always
+    recipients:
+      - sjh2808@gmail.com

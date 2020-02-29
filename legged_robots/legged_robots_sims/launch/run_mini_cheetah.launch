@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<launch>
-  <include file="$(find legged_robots_sims)/launch/world.launch"/>
-
-  <include file="$(find legged_robots_sims)/launch/spawn_mini_cheetah.launch"/>
-</launch>
