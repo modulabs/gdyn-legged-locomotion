@@ -1,3 +1,0 @@
-<launch>
-  <node name="legged_robot_gui" pkg="legged_robot_gui" type="legged_robot_gui" output="screen"/>
-</launch>

@@ -1,10 +1,10 @@
 #!/bin/bash
 # Apache License 2.0
-# Copyright (c) 2017, ROBOTIS CO., LTD.
+# Copyright (c) 2018, ROBOTIS CO., LTD.
 
 echo ""
-echo "[Note] Target OS version  >>> Ubuntu 16.04.x (xenial) or Linux Mint 18.x"
-echo "[Note] Target ROS version >>> ROS Kinetic Kame"
+echo "[Note] Target OS version  >>> Ubuntu 18.04.x (Bionic Beaver) or Linux Mint 19.x"
+echo "[Note] Target ROS version >>> ROS Melodic Morenia"
 echo "[Note] Catkin workspace   >>> $HOME/catkin_ws"
 echo ""
 echo "PRESS [ENTER] TO CONTINUE THE INSTALLATION"
@@ -12,16 +12,16 @@ echo "IF YOU WANT TO CANCEL, PRESS [CTRL] + [C]"
 read
 
 echo "[Set the target OS, ROS version and name of catkin workspace]"
-name_os_version=${name_os_version:="xenial"}
-name_ros_version=${name_ros_version:="kinetic"}
+name_os_version=${name_os_version:="bionic"}
+name_ros_version=${name_ros_version:="melodic"}
 name_catkin_workspace=${name_catkin_workspace:="catkin_ws"}
 
 echo "[Update the package lists and upgrade them]"
-sudo apt-get update -y
-sudo apt-get upgrade -y
+sudo apt update -y
+sudo apt upgrade -y
 
 echo "[Install build environment, the chrony, ntpdate and set the ntpdate]"
-sudo apt-get install -y chrony ntpdate build-essential
+sudo apt install -y chrony ntpdate build-essential
 sudo ntpdate ntp.ubuntu.com
 
 echo "[Add the ROS repository]"
@@ -45,11 +45,11 @@ else
 fi
 
 echo "[Update the package lists and upgrade them]"
-sudo apt-get update -y
-sudo apt-get upgrade -y
+sudo apt update -y
+sudo apt upgrade -y
 
 echo "[Install the ros-desktop-full and all rqt plugins]"
-sudo apt-get install -y ros-$name_ros_version-desktop-full ros-$name_ros_version-rqt-*
+sudo apt install -y ros-$name_ros_version-desktop-full ros-$name_ros_version-rqt-*
 
 echo "[Initialize rosdep]"
 sudo sh -c "rosdep init"
@@ -57,7 +57,7 @@ rosdep update
 
 echo "[Environment setup and getting rosinstall]"
 source /opt/ros/$name_ros_version/setup.sh
-sudo apt-get install -y python-rosinstall
+sudo apt install -y python-rosinstall python-rosinstall-generator python-wstool
 
 echo "[Make the catkin workspace and test the catkin_make]"
 mkdir -p $HOME/$name_catkin_workspace/src
@@ -72,18 +72,23 @@ sh -c "echo \"alias nb='nano ~/.bashrc'\" >> ~/.bashrc"
 sh -c "echo \"alias sb='source ~/.bashrc'\" >> ~/.bashrc"
 sh -c "echo \"alias gs='git status'\" >> ~/.bashrc"
 sh -c "echo \"alias gp='git pull'\" >> ~/.bashrc"
+sh -c "echo \"alias nt='nautilus .'\" >> ~/.bashrc"
+
 sh -c "echo \"alias cw='cd ~/$name_catkin_workspace'\" >> ~/.bashrc"
 sh -c "echo \"alias cs='cd ~/$name_catkin_workspace/src'\" >> ~/.bashrc"
 sh -c "echo \"alias cm='cd ~/$name_catkin_workspace && catkin_make && rospack profile && source ~/.bashrc'\" >> ~/.bashrc"
 sh -c "echo \"alias cr='cd ~/$name_catkin_workspace && rm -rf build devel'\" >> ~/.bashrc"
-sh -c "echo \"alias checkROSsetup='export | grep ROS'\" >> ~/.bashrc"
-sh -c "echo \"alias sshconnectrobot='ssh ubuntu@192.168.0.0' \" >> ~/.bashrc"
+sh -c "echo \"alias kg='killall -9 gazebo & killall -9 gzserver  & killall -9 gzclient'\" >> ~/.bashrc"
+
+sh -c "echo \"alias lnom='ln -Tfs ~/github/om ~/$name_catkin_workspace/src'\" >> ~/.bashrc"
+sh -c "echo \"alias lntb='ln -Tfs ~/github/tb ~/$name_catkin_workspace/src'\" >> ~/.bashrc"
 
 sh -c "echo \"source /opt/ros/$name_ros_version/setup.bash\" >> ~/.bashrc"
 sh -c "echo \"source ~/$name_catkin_workspace/devel/setup.bash\" >> ~/.bashrc"
 
 sh -c "echo \"export ROS_MASTER_URI=http://localhost:11311\" >> ~/.bashrc"
 sh -c "echo \"export ROS_HOSTNAME=localhost\" >> ~/.bashrc"
+sh -c "echo \"alias tb3='ssh ubuntu@192.168.0.0' \" >> ~/.bashrc"
 
 source $HOME/.bashrc
 
