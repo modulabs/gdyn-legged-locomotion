@@ -16,12 +16,12 @@ Changelog for package gdyn-legged-locomotion
 * added foot wrench to display on rviz
 * Contributors: Ryan Shim
 
-0.2.0 (2019-12-01)
+0.2.0 (2019-11-13)
 ------------------
-* added ?? packages for legged robot
-* Contributors: ??
+* added packages for legged robot
+* Contributors: Elton Choi
 
-0.1.0 (2019-09-01)
+0.1.0 (2019-08-24)
 ------------------
-* added ?? packages for legged robot
-* Contributors: ??
+* added packages for legged robot
+* Contributors: Elton Choi

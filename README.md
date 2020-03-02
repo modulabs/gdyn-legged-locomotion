@@ -1,44 +1,44 @@
-# gdyn-legged-locomotion ![Travis CI status](https://travis-ci.org/rjshim/gdyn-legged-locomotion.svg?branch=master)
+# gdyn-legged-locomotion ![Travis CI status](https://travis-ci.org/modulabs/gdyn-legged-locomotion.svg?branch=master)
 4-Legged Robot Project of 강남Dynamics Lab
 
 ## Videos
 [강남Dynamics Youtube Channel](https://www.youtube.com/channel/UCZDq0-S-_fNhUzGUlN39hfg?view_as=subscriber)
 
 
-## Install
-  ```bash
-  # Install ROS
-  $ wget https://raw.githubusercontent.com/rjshim/gdyn-legged-locomotion/master/install_ros_kinetic.sh && chmod 755 ./install_ros_kinetic.sh && bash ./install_ros_kinetic.sh
-
-  # Install & Bulid legged robot packages
-  $ cd ~/catkin_ws/src
-  $ git clone https://github.com/rjshim/gdyn-legged-locomotion.git
-  $ sudo apt-get install ros-kinetic-joy \
-                 ros-kinetic-joystick-drivers \
-                 ros-kinetic-teleop-twist-joy
-  $ sudo apt-get install python-pip
-  $ pip install cython ds4drv
-  $ cd ~/catkin_ws && catkin_make
-  ```
-
-## Dependencies
-[spawn_robot_tools](https://bitbucket.org/theconstructcore/spawn_robot_tools/src/master/)
-Just download this package in your catkin workspace, and build.
-
-[ROS wrapper of qpOASES](https://github.com/SemRoCo/qpOASES)
-Download this package in your catkin workspace, and build.
-Install cython using pip, if you are requested.
-
+## How to Install
 ```bash
-$ pip install cython
+# Install ROS Melodic
+$ wget https://raw.githubusercontent.com/modulabs/gdyn-legged-locomotion/master/install_ros_melodic.sh && chmod 755 ./install_ros_melodic.sh && bash ./install_ros_melodic.sh
+
+# Download & Bulid legged robot packages
+$ cd ~/catkin_ws/src
+$ git clone https://github.com/modulabs/gdyn-legged-locomotion.git
+$ sudo apt-get install ros-melodic-joy \
+                       ros-melodic-joystick-drivers \
+                       ros-melodic-teleop-twist-joy
+$ sudo apt-get install python-pip
+$ pip install cython ds4drv
+$ cd ~/catkin_ws && catkin_make
 ```
-## How to run
-There are ros luanch files in legged_robots/legged_robots_sims/launch. 
 
-run_hyq.launch and run_hyq_fixed.launch is valid for now.
-
+## How to Run
 ```bash
-$ roslaunch legged_robots_sims run_hyq.launch
+# Run Gazebo simulation (run_hyq.launch and run_hyq_fixed.launch are valid for now.)
+$ roslaunch legged_robot_gazebo run_hyq.launch
+
+# Run Rviz
+$ roslaunch legged_robot_description hyq_view.launch
+
+# Run GUI
+$ rosrun legged_robot_gui legged_robot_gui
+
+# Run Teleop Keyboard
+$ rosrun legged_robot_teleop legged_robot_teleop_keyboard
+
+# Run Teleop Joystick (PS4)
+$ sudo ds4drv # Detailed Usage (https://github.com/RetroPie/RetroPie-Setup/wiki/PS4-Controller)
+$ roslaunch teleop_twist_joy teleop.launch
+$ rosrun legged_robot_teleop legged_robot_teleop_joystick
 ```
 
 ## References
