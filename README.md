@@ -8,7 +8,9 @@
 ## How to Install
 ```bash
 # Install ROS Melodic
-$ wget https://raw.githubusercontent.com/modulabs/gdyn-legged-locomotion/master/install_ros_melodic.sh && chmod 755 ./install_ros_melodic.sh && bash ./install_ros_melodic.sh
+$ wget https://raw.githubusercontent.com/modulabs/gdyn-legged-locomotion/master/install_ros_melodic.sh \
+  && chmod 755 ./install_ros_melodic.sh \
+  && bash ./install_ros_melodic.sh
 
 # Download & Bulid legged robot packages
 $ cd ~/catkin_ws/src
