@@ -6,12 +6,17 @@
 
 
 ## How to Install
+### Install ROS Melodic
+Follow the ros wiki or use below script if you want.
 ```bash
 # Install ROS Melodic
 $ wget https://raw.githubusercontent.com/modulabs/gdyn-legged-locomotion/master/install_ros_melodic.sh \
   && chmod 755 ./install_ros_melodic.sh \
   && bash ./install_ros_melodic.sh
+```
 
+### Install legged robot packages and their dependencies
+```bash
 # Download & Bulid legged robot packages
 $ cd ~/catkin_ws/src
 $ git clone https://github.com/modulabs/gdyn-legged-locomotion.git
@@ -19,7 +24,7 @@ $ sudo apt-get install ros-melodic-joy \
                        ros-melodic-joystick-drivers \
                        ros-melodic-teleop-twist-joy
 $ sudo apt-get install python-pip
-$ pip install cython ds4drv
+$ pip install cython wheel ds4drv
 $ cd ~/catkin_ws && catkin_make
 ```
 
