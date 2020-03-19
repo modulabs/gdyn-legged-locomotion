@@ -16,7 +16,6 @@ add_message_files(
 add_service_files(
   FILES
     UpdateGain.srv
-    MoveBody.srv
     UICommand.srv
 )
 

@@ -40,35 +40,35 @@ void LeggedRobotTeleopJoystick::setGoal(const char* str)
 {
   if(str == "x+")
   {
-    sendCommand("ChgCtrl", "VSD");
+    sendCommand("change_controller", "VSD");
   }
   else if(str == "x-")
   {
-    sendCommand("ChgCtrl", "BalQP");
+    sendCommand("change_controller", "BalQP");
   }
   else if(str == "y+")
   {
-    sendCommand("ChgCtrl", "BalMPC");
+    sendCommand("change_controller", "BalMPC");
   }
   else if(str == "y-")
   {
-    sendCommand("ChgCtrl", "BalMPCWB");
+    sendCommand("change_controller", "BalMPCWB");
   }
   else if(str == "z+")
   {
-    sendCommand("Body", "", 0);
+    sendCommand("move_body", "", 0);
   }
   else if(str == "z-")
   {
-    sendCommand("Body", "", 1);
+    sendCommand("move_body", "", 1);
   }
   else if(str == "w+")
   {
-    sendCommand("Body", "", 2);
+    sendCommand("move_body", "", 2);
   }
   else if(str == "w-")
   {
-    sendCommand("Body", "", 3);
+    sendCommand("move_body", "", 3);
   }
   else if(str == "a+")
   {

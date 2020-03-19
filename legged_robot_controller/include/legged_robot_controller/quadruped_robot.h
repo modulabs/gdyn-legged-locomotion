@@ -25,29 +25,48 @@
 
 namespace quadruped_robot
 {
-namespace controllers
-{
-  enum Controller
+  namespace gait_patterns
   {
-    VirtualSpringDamper,
-    BalancingQP,
-    BalancingMPC,
-    BalancingMPCWholeBody,
-    Swing
-  };
-  inline const char* ControllerToString(Controller controller)
-  {
-    switch (controller)
+    enum GaitPattern
     {
-        case VirtualSpringDamper:   return "VSD";
-        case BalancingQP:           return "BalQP";
-        case BalancingMPC:          return "BalMPC";
-        case BalancingMPCWholeBody: return "BalMPCWB";
-        case Swing:                 return "Swing";
-        default:                    return "---";
+      Falling,
+      Standing,
+      Manipulation,
+      Walking,
+      Pacing,
+      Trotting,
+      Bounding,
+      Galloping,
+      Pronking
+    };
+  }
+
+  namespace controllers
+  {
+    enum Controller
+    {
+      VirtualSpringDamper,
+      BalancingQP,
+      BalancingMPC,
+      BalancingMPCWholeBody,
+      Swing
+    };
+
+    inline const char* ControllerToString(Controller controller)
+    {
+      switch (controller)
+      {
+          case VirtualSpringDamper:   return "VSD";
+          case BalancingQP:           return "BalQP";
+          case BalancingMPC:          return "BalMPC";
+          case BalancingMPCWholeBody: return "BalMPCWB";
+          case Swing:                 return "Swing";
+          default:                    return "---";
+      }
     }
-  }  
-}
+  }
+
+
 
 class QuadrupedRobot
 {
@@ -62,6 +81,7 @@ public:
   // set function
   void setController(size_t i, controllers::Controller controller);
 
+
   // main routine
   int init();
   void updateSensorData(const std::array<Eigen::Vector3d, 4>& q, const std::array<Eigen::Vector3d, 4>& q_dot,
@@ -75,11 +95,13 @@ public:
   Eigen::Matrix3d _I_com_body;
   Eigen::Vector3d _p_body2com;
 
+  // action
+  Pose   _pose_body_goal;
+  double _goal_time_body;
+
+
   // controller
   std::array<controllers::Controller, 4> _controller;
-
-  // state
-  std::array<int, 4> _contact_states;
 
   // joint space
   std::array<KDL::JntArray,4> _kdl_q_leg, _kdl_qdot_leg;
@@ -94,12 +116,17 @@ public:
 
   std::array<Eigen::Vector3d, 4> _p_body2leg_d;
 
+  // motion plan
+  gait_patterns::GaitPattern _gait_pattern;
+  gait_patterns::GaitPattern _gait_pattern_old;
+
+  // gait, contact plan
   std::array<double, 4> _T_stance;
   std::array<double, 4> _T_swing;
   std::array<double, 4> _S_stance;
   std::array<double, 4> _S_swing;
   std::array<double, 4> _t_leg;
-  std::array<int, 4> _contact_state;
+  std::array<int, 4> _contact_states;
 
   // body
   Pose  _pose_body, _pose_body_d;           // world to body

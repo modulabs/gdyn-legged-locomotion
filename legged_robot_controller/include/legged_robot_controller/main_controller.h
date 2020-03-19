@@ -30,6 +30,7 @@
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/WrenchStamped.h>
 
+#include "legged_robot_controller/motion_planner.h"
 #include "legged_robot_controller/balance_controller.h"
 #include "legged_robot_controller/mpc_controller.h"
 #include "legged_robot_controller/quadruped_robot.h"
@@ -72,7 +73,6 @@ public:
   void subscribeRHContactState(const gazebo_msgs::ContactsStateConstPtr& msg);
 
   // Service
-  bool srvMoveBodyCB(legged_robot_msgs::MoveBody::Request& request, legged_robot_msgs::MoveBody::Response& response);
   bool srvUICommand(legged_robot_msgs::UICommand::Request& request, legged_robot_msgs::UICommand::Response& response);
 
   bool updateGain(legged_robot_msgs::UpdateGain::Request& request, legged_robot_msgs::UpdateGain::Response& response);
@@ -117,6 +117,9 @@ private:
   std::array<Eigen::Vector3d, 4> _F_leg;
   std::array<Eigen::Vector3d, 4> _F_leg_balance; // FIXME. temporary
   std::array<Eigen::Vector3d, 4> _tau_leg;
+
+  // Motion Planner
+  MotionPlanner _motion_planner;
 
   // trajectory
   trajectory::Bezier _swing_traj;

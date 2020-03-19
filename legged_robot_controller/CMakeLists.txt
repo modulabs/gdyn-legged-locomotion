@@ -42,6 +42,7 @@ catkin_package(
 
 add_library(${PROJECT_NAME}
   src/main_controller.cpp
+  src/motion_planner.cpp
   src/balance_controller.cpp
   src/virtual_spring_damper_controller.cpp
   src/mpc_controller.cpp

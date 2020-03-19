@@ -31,67 +31,67 @@ MainWindow::~MainWindow() {}
 
 void MainWindow::on_pushButton_00_clicked(void)
 {
-  qnode.sendCommand("ChgCtrl", "VSD");
+  qnode.sendCommand("change_controller", "VSD");
 }
 
 void MainWindow::on_pushButton_01_clicked(void)
 {
-  qnode.sendCommand("ChgCtrl", "BalQP");
+  qnode.sendCommand("change_controller", "BalQP");
 }
 
 void MainWindow::on_pushButton_02_clicked(void)
 {
-  qnode.sendCommand("ChgCtrl", "BalMPC");
+  qnode.sendCommand("change_controller", "BalMPC");
 }
 
 void MainWindow::on_pushButton_03_clicked(void)
 {
-  qnode.sendCommand("ChgCtrl", "BalMPCWB");
+  qnode.sendCommand("change_controller", "BalMPCWB");
 }
 
 void MainWindow::on_pushButton_04_clicked(void)
 {
-  qnode.sendCommand("Body", "", 0);
+  qnode.sendCommand("move_body", "", 0);
 }
 
 void MainWindow::on_pushButton_05_clicked(void)
 {
-  qnode.sendCommand("Body", "", 1);
+  qnode.sendCommand("move_body", "", 1);
 }
 
 void MainWindow::on_pushButton_06_clicked(void)
 {
-  qnode.sendCommand("Body", "", 2);
+  qnode.sendCommand("move_body", "", 2);
 }
 
 void MainWindow::on_pushButton_07_clicked(void)
 {
-  qnode.sendCommand("Body", "", 3);
+  qnode.sendCommand("move_body", "", 3);
 }
 
 void MainWindow::on_pushButton_08_clicked(void)
 {
-  qnode.sendCommand("Body", "", 4);
+  qnode.sendCommand("move_body", "", 4);
 }
 
 void MainWindow::on_pushButton_09_clicked(void)
 {
-  qnode.sendCommand("Body", "", 5);
+  qnode.sendCommand("move_body", "", 5);
 }
 
 void MainWindow::on_pushButton_10_clicked(void)
 {
-  qnode.sendCommand("Body", "", 6);
+  qnode.sendCommand("move_body", "", 6);
 }
 
 void MainWindow::on_pushButton_11_clicked(void)
 {
-  qnode.sendCommand("Body", "", 7);
+  qnode.sendCommand("move_body", "", 7);
 }
 
 void MainWindow::on_pushButton_12_clicked(void)
 {
-  qnode.sendCommand("Body", "", 8);
+  qnode.sendCommand("move_body", "", 8);
 }
 
 void MainWindow::on_pushButton_13_clicked(void)

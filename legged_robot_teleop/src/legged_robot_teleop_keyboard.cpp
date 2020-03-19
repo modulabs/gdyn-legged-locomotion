@@ -55,55 +55,55 @@ void LeggedRobotTeleopKeyboard::setGoal(char ch)
 {
   if(ch == 'q' || ch == 'Q')
   {
-    sendCommand("ChgCtrl", "VSD");
+    sendCommand("change_controller", "VSD");
   }
   else if(ch == 'w' || ch == 'W')
   {
-    sendCommand("ChgCtrl", "BalQP");
+    sendCommand("change_controller", "BalQP");
   }
   else if(ch == 'e' || ch == 'E')
   {
-    sendCommand("ChgCtrl", "BalMPC");
+    sendCommand("change_controller", "BalMPC");
   }
   else if(ch == 'r' || ch == 'R')
   {
-    sendCommand("ChgCtrl", "BalMPCWB");
+    sendCommand("change_controller", "BalMPCWB");
   }
   else if(ch == 'a' || ch == 'A')
   {
-    sendCommand("Body", "", 0);
+    sendCommand("move_body", "", 0);
   }
   else if(ch == 's' || ch == 'S')
   {
-    sendCommand("Body", "", 1);
+    sendCommand("move_body", "", 1);
   }
   else if(ch == 'd' || ch == 'D')
   {
-    sendCommand("Body", "", 2);
+    sendCommand("move_body", "", 2);
   }
   else if(ch == 'f' || ch == 'F')
   {
-    sendCommand("Body", "", 3);
+    sendCommand("move_body", "", 3);
   }
   else if(ch == 'g' || ch == 'G')
   {
-    sendCommand("Body", "", 4);
+    sendCommand("move_body", "", 4);
   }
   else if(ch == 'h' || ch == 'H')
   {
-    sendCommand("Body", "", 5);
+    sendCommand("move_body", "", 5);
   }
   else if(ch == 'j' || ch == 'J')
   {
-    sendCommand("Body", "", 6);
+    sendCommand("move_body", "", 6);
   }
   else if(ch == 'k' || ch == 'K')
   {
-    sendCommand("Body", "", 7);
+    sendCommand("move_body", "", 7);
   }
   else if(ch == 'l' || ch == 'L')
   {
-    sendCommand("Body", "", 8);
+    sendCommand("move_body", "", 8);
   }
   else if(ch == 'z' || ch == 'Z')
   {

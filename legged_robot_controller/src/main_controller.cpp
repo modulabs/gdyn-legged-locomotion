@@ -1,8 +1,3 @@
-/*
-  Author: Modulabs
-  File Name: main_controller.cpp
-*/
-
 #include "legged_robot_controller/main_controller.h"
 
 
@@ -162,10 +157,13 @@ bool MainController::init(hardware_interface::EffortJointInterface *hw, ros::Nod
   _mpc_controller.init();
   _mpc_controller._step = 0;
 
-  // first controller
-  _robot.setController(4, quadruped_robot::controllers::VirtualSpringDamper);
-  for (size_t i = 0; i < 4; i++)
-    _robot._p_body2leg_d[i] = Vector3d(0, 0, -0.4);
+  // First Motion Plan
+  _motion_planner.init(&_robot);
+  _robot._gait_pattern = quadruped_robot::gait_patterns::Falling;
+  _motion_planner.update();
+//  _robot.setController(4, quadruped_robot::controllers::VirtualSpringDamper);
+//  for (size_t i = 0; i < 4; i++)
+//    _robot._p_body2leg_d[i] = Vector3d(0, 0, -0.4);
 
   // trajectory control points
   std::vector<Vector2d> pnts(4);
@@ -187,7 +185,7 @@ void MainController::starting(const ros::Time &time)
 {
   _t = 0;
 
-  ROS_INFO("Starting Leg Controller");
+  ROS_INFO("Start Locomotion Controller");
 }
 
 void MainController::subscribeCommand(const std_msgs::Float64MultiArrayConstPtr &msg)
@@ -310,24 +308,13 @@ bool MainController::updateGain()
   return true;
 }
 
-bool MainController::srvMoveBodyCB(legged_robot_msgs::MoveBody::Request &request, legged_robot_msgs::MoveBody::Response &response)
-{
-  // Eigen::Vector6d delta_pose = Map<Eigen::Vector6d>(request.delta_pose);
-
-  // p_body_d = p_body_d + delta_pose.head(3) * MM2M;
-
-  // AngleAxisd request.delta_pose[3] * D2R;
-
-  // _minjerk_traj.setTrajInput(request.delta_pose, request.duration);
-}
-
 bool MainController::srvUICommand(legged_robot_msgs::UICommand::Request &request, legged_robot_msgs::UICommand::Response &response)
 {
   std::string mainCommand = request.main_command;
   std::string subCommand = request.sub_command;
   long int intParam = request.param_int64;
   double floatParam = request.param_float64;
-  if (mainCommand == "ChgCtrl")
+  if (mainCommand == "change_controller")
   {
     _robot._pose_body_d._pos = _robot._pose_body._pos;
       _robot._pose_body_d._rot_quat.setIdentity();
@@ -345,7 +332,24 @@ bool MainController::srvUICommand(legged_robot_msgs::UICommand::Request &request
     response.result = true;
     return true;
   }
-  else if (mainCommand == "Body")
+  else if (mainCommand == "gait")
+  {
+    if (subCommand == "standing")
+      _motion_planner.setGaitPattern(quadruped_robot::gait_patterns::Standing);
+    else if (subCommand == "manipulation")
+      _motion_planner.setGaitPattern(quadruped_robot::gait_patterns::Manipulation, intParam);  // intParam means manipulation leg
+    else if (subCommand == "walking")
+      _motion_planner.setGaitPattern(quadruped_robot::gait_patterns::Walking);
+    else if (subCommand == "pacing")
+      _motion_planner.setGaitPattern(quadruped_robot::gait_patterns::Pacing);
+    else if (subCommand == "trotting")
+      _motion_planner.setGaitPattern(quadruped_robot::gait_patterns::Trotting);
+    else if (subCommand == "bounding")
+      _motion_planner.setGaitPattern(quadruped_robot::gait_patterns::Bounding);
+    else if (subCommand == "galloping")
+      _motion_planner.setGaitPattern(quadruped_robot::gait_patterns::Galloping);
+  }
+  else if (mainCommand == "move_body")
   {
     // Turn Left/Right
     if (intParam == 0)
@@ -475,11 +479,15 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
   // @TODO: State Estimation, For now, use gazebo data
   //  _state_estimation.update(_robot);
 
+  // Motion Planner
+  _motion_planner.update();
+
   // @TODO: Trajectory Generation, update trajectory - get from this initial state(temporary)
+
   // _trajectory_generator.update(_robot);
 
 
-#define SWING_CONTROL_TEST
+#undef SWING_CONTROL_TEST
 #ifdef SWING_CONTROL_TEST
   static int td = 0;
   static double s = 0;
@@ -508,36 +516,36 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 
       if (_robot._t_leg[i] < -T_stride)
       {
-        _robot._contact_state[i] = 0;
+        _robot._contact_states[i] = 0;
         _robot._S_swing[i] = 1;
       }
       else if (_robot._t_leg[i] < -T_swing)
       {
-        _robot._contact_state[i] = 1;
+        _robot._contact_states[i] = 1;
         _robot._S_stance[i] = (_robot._t_leg[i] + T_stride) / T_stance;
       }
       else if (_robot._t_leg[i] < 0)
       {
-        _robot._contact_state[i] = 0;
+        _robot._contact_states[i] = 0;
         _robot._S_swing[i] = (_robot._t_leg[i] + T_swing) / T_swing;
       }
       else if (_robot._t_leg[i] < T_stance)
       {
-        _robot._contact_state[i] = 1;
+        _robot._contact_states[i] = 1;
         _robot._S_stance[i] = _robot._t_leg[i]/T_stance;
       }
       else if (_robot._t_leg[i] < T_stride)
       {
-        _robot._contact_state[i] = 0;
+        _robot._contact_states[i] = 0;
         _robot._S_swing[i] = (_robot._t_leg[i] - T_stance) / T_swing;
       }
       else
       {
-        _robot._contact_state[i] = 0;
+        _robot._contact_states[i] = 0;
         _robot._S_swing[i] = 1;
       }
 
-      if (_robot._contact_state[i] == 0)
+      if (_robot._contact_states[i] == 0)
       {
         _robot._p_body2leg_d[i](0) = _swing_traj.getPoint(_robot._S_swing[i])(0);
         _robot._p_body2leg_d[i](2) = _swing_traj.getPoint(_robot._S_swing[i])(1);
