@@ -5,6 +5,7 @@ void MotionPlanner::setGaitPattern(quadruped_robot::gait_patterns::GaitPattern g
 {
   _robot->_gait_pattern_old = _robot->_gait_pattern;
   _robot->_gait_pattern = gait_pattern;
+  _robot->_gait_pattern_start = true;
 }
 
 void MotionPlanner::update()
@@ -16,8 +17,11 @@ void MotionPlanner::update()
     updateFalling();
     break;
   case quadruped_robot::gait_patterns::Standing:
-    if (_robot->_gait_pattern_old != quadruped_robot::gait_patterns::Standing)
+    if (_robot->_gait_pattern_start)
+    {
       startStanding();
+      _robot->_gait_pattern_start = false;
+    }
     else
       updateStanding();
     break;
@@ -39,15 +43,20 @@ void MotionPlanner::update()
 void MotionPlanner::updateFalling()
 {
   _robot->setController(4, quadruped_robot::controllers::VirtualSpringDamper);
-  for (size_t i = 0; i < 4; i++)
-    _robot->_p_body2leg_d[i] = Vector3d(0, 0, -0.4);
+
+  _robot->_p_body2leg_d[0] = Vector3d(0, 0, -0.5);
+  _robot->_p_body2leg_d[1] = Vector3d(0, 0, -0.5);
+  _robot->_p_body2leg_d[2] = Vector3d(0, 0, -0.5);
+  _robot->_p_body2leg_d[3] = Vector3d(0, 0, -0.5);
+
 }
 
 void MotionPlanner::startStanding()
 {
   ROS_INFO("[Motion Planner] Start Standing");
 
-  _robot->_pose_com_d = _robot->_pose_body;
+  _robot->_pose_body_d._pos = _robot->_pose_body._pos;
+  _robot->_pose_body_d._rot_quat.setIdentity();
 
   _robot->setController(4, quadruped_robot::controllers::BalancingQP);
 //  _robot->setController(4, quadruped_robot::controllers::BalancingMPC);

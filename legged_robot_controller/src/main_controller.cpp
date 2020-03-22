@@ -348,6 +348,9 @@ bool MainController::srvUICommand(legged_robot_msgs::UICommand::Request &request
       _motion_planner.setGaitPattern(quadruped_robot::gait_patterns::Bounding);
     else if (subCommand == "galloping")
       _motion_planner.setGaitPattern(quadruped_robot::gait_patterns::Galloping);
+
+    response.result = true;
+    return true;
   }
   else if (mainCommand == "move_body")
   {
@@ -704,6 +707,8 @@ void MainController::update(const ros::Time &time, const ros::Duration &period)
 
   // Kinematics, Dynamics
   _robot.calKinematicsDynamics();
+
+  // Controller
   _virtual_spring_damper_controller.update(_robot, _F_leg);
 
 #ifdef MPC_Debugging

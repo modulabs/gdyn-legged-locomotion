@@ -35,6 +35,7 @@ public:
 
   void setIdentity();
 
+  void operator=(const Pose& a) {_pos = a._pos; _rot_quat = a._rot_quat;}
   const Pose operator*(const Pose& a) const;
   const Vector3d operator*(const Vector3d& b) const;
 

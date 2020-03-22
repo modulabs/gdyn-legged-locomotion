@@ -117,8 +117,9 @@ public:
   std::array<Eigen::Vector3d, 4> _p_body2leg_d;
 
   // motion plan
-  gait_patterns::GaitPattern _gait_pattern;
-  gait_patterns::GaitPattern _gait_pattern_old;
+  gait_patterns::GaitPattern  _gait_pattern;
+  gait_patterns::GaitPattern  _gait_pattern_old;
+  bool                        _gait_pattern_start;
 
   // gait, contact plan
   std::array<double, 4> _T_stance;
