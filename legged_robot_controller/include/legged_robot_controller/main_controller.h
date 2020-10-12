@@ -38,7 +38,7 @@
 #include "legged_robot_controller/virtual_spring_damper_controller.h"
 #include "legged_robot_math/bezier.h"
 #include "legged_robot_msgs/ControllerJointState.h"
-#include "legged_robot_msgs/MoveBody.h"
+// #include "legged_robot_msgs/MoveBody.h"
 #include "legged_robot_msgs/UICommand.h"
 #include "legged_robot_msgs/UIState.h"
 #include "legged_robot_msgs/UpdateGain.h"
